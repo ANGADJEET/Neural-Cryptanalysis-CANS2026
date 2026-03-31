@@ -1,0 +1,81 @@
+# Project Configuration
+
+# Paths
+paths:
+  data_dir: "./data/generated"
+  models_dir: "./checkpoints"
+  results_dir: "./results"
+  figures_dir: "./figures"
+
+# Wandb Configuration
+wandb:
+  project: "neural-cryptanalysis"
+  entity: null  # Set to your username
+  tags: ["differential", "representation"]
+  log_interval: 100
+  save_model: true
+
+# Data Generation Defaults
+data:
+  train_samples: 10000000
+  val_samples: 1000000
+  test_samples: 1000000
+  batch_size: 5000
+  num_workers: 4
+
+# Cipher Configurations
+ciphers:
+  speck32:
+    block_size: 32
+    key_size: 64
+    word_size: 16
+    max_rounds: 22
+    target_rounds: [5, 6, 7, 8]
+    default_delta_p: [0x0040, 0x0000]
+  
+  simon32:
+    block_size: 32
+    key_size: 64
+    word_size: 16
+    max_rounds: 32
+    target_rounds: [5, 6, 7, 8, 9]
+    default_delta_p: [0x0000, 0x0001]
+  
+  present:
+    block_size: 64
+    key_size: 80
+    max_rounds: 31
+    target_rounds: [3, 4, 5, 6]
+    default_delta_p: 0x0000000000000001
+
+# Model Defaults
+models:
+  mlp:
+    hidden_layers: [512, 256, 128, 64]
+    dropout: 0.1
+    batch_norm: true
+  
+  cnn:
+    conv_filters: [32, 64]
+    kernel_size: 3
+    fc_layers: [128, 64]
+  
+  lstm:
+    hidden_size: 128
+    num_layers: 2
+    bidirectional: true
+    dropout: 0.1
+
+# Training Defaults
+training:
+  optimizer: adam
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  scheduler: cosine
+  epochs: 50
+  early_stopping_patience: 5
+
+# Experiment Settings
+experiments:
+  random_seed: 42
+  num_trials: 3  # For statistical significance

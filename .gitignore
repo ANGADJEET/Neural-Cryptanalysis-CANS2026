@@ -1,0 +1,42 @@
+# Python virtual environment
+crypto-env/
+venv/
+env/
+.env
+
+# Cache and temporary files
+__pycache__/
+*.pyc
+.pytest_cache/
+pytest_output.txt
+
+# Shell scripts (user request)
+*.sh
+
+# Checkpoints
+checkpoints/
+
+# Drafts and unnecessary folders
+report/
+
+# IDE config files
+.idea/
+.vscode/
+*.swp
+
+# LaTeX auxiliary files (globally)
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.brf
+*.bcf
+*.run.xml
+
+# Ensure we keep specific items in report directories
+# (The global rules above will already ignore the aux files, keeping .tex, .pdf, and figures)

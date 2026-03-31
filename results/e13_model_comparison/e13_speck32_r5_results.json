@@ -1,0 +1,100 @@
+{
+  "gohr_mlp": {
+    "accuracy_mean": 0.87104,
+    "accuracy_std": 0.005116717697899698,
+    "accuracy_values": [
+      0.86122,
+      0.87398,
+      0.87414,
+      0.8708,
+      0.87506
+    ],
+    "n_params": 457153,
+    "train_time_mean": 84.20000000000002,
+    "infer_throughput": 60723
+  },
+  "mlp": {
+    "accuracy_mean": 0.886736,
+    "accuracy_std": 0.003765430121513333,
+    "accuracy_values": [
+      0.88002,
+      0.88828,
+      0.89142,
+      0.88616,
+      0.8878
+    ],
+    "n_params": 191361,
+    "train_time_mean": 222.484,
+    "infer_throughput": 67812
+  },
+  "cnn": {
+    "accuracy_mean": 0.8791800000000001,
+    "accuracy_std": 0.004255311974462029,
+    "accuracy_values": [
+      0.87182,
+      0.88086,
+      0.8848,
+      0.87822,
+      0.8802
+    ],
+    "n_params": 80513,
+    "train_time_mean": 287.694,
+    "infer_throughput": 86213
+  },
+  "residual_cnn": {
+    "accuracy_mean": 0.868752,
+    "accuracy_std": 0.006035277624103133,
+    "accuracy_values": [
+      0.85724,
+      0.87254,
+      0.87374,
+      0.8683,
+      0.87194
+    ],
+    "n_params": 135489,
+    "train_time_mean": 363.432,
+    "infer_throughput": 68209
+  },
+  "siamese": {
+    "accuracy_mean": 0.868104,
+    "accuracy_std": 0.0039522429075146545,
+    "accuracy_values": [
+      0.86306,
+      0.86898,
+      0.87352,
+      0.86418,
+      0.87078
+    ],
+    "n_params": 56769,
+    "train_time_mean": 216.25,
+    "infer_throughput": 68825
+  },
+  "lstm": {
+    "accuracy_mean": 0.875728,
+    "accuracy_std": 0.0044069327201580735,
+    "accuracy_values": [
+      0.86738,
+      0.87764,
+      0.87978,
+      0.87542,
+      0.87842
+    ],
+    "n_params": 594178,
+    "train_time_mean": 273.022,
+    "infer_throughput": 0
+  },
+  "gru": {
+    "accuracy_mean": 0.876384,
+    "accuracy_std": 0.003735995717342285,
+    "accuracy_values": [
+      0.86926,
+      0.87852,
+      0.87896,
+      0.87602,
+      0.87916
+    ],
+    "n_params": 453761,
+    "train_time_mean": 249.96599999999998,
+    "infer_throughput": 0
+  }
+}

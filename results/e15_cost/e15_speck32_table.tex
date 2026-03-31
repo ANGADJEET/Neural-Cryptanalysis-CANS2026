@@ -1,0 +1,16 @@
+\begin{table}[h]
+\centering
+\caption{Model benchmarks — SPECK32 (5r)}
+\begin{tabular}{lrrlrl}
+\toprule
+Model & Params & Accuracy & Train (s) & Throughput (s/s) & Size (MB) \\
+\midrule
+gohr_mlp & 457,153 & 0.8612 & 89.1 & 71,663 & 1.744 \\
+mlp & 191,361 & 0.8852 & 240.1 & 88,295 & 0.730 \\
+cnn & 80,513 & 0.8840 & 248.2 & 88,185 & 0.307 \\
+residual_cnn & 135,489 & 0.8673 & 336.3 & 71,099 & 0.517 \\
+lstm & 594,178 & 0.9001 & 184.2 & 89,871 & 2.267 \\
+gru & 453,761 & 0.8800 & 225.9 & 117,417 & 1.731 \\
+\bottomrule
+\end{tabular}
+\end{table}

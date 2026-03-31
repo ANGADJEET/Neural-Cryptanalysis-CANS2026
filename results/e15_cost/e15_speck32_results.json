@@ -1,0 +1,50 @@
+{
+  "gohr_mlp": {
+    "n_params": 457153,
+    "trainable_params": 457153,
+    "accuracy": 0.86122,
+    "train_time_sec": 89.06,
+    "infer_throughput": 71663,
+    "model_size_mb": 1.744
+  },
+  "mlp": {
+    "n_params": 191361,
+    "trainable_params": 191361,
+    "accuracy": 0.8852,
+    "train_time_sec": 240.11,
+    "infer_throughput": 88295,
+    "model_size_mb": 0.73
+  },
+  "cnn": {
+    "n_params": 80513,
+    "trainable_params": 80513,
+    "accuracy": 0.88398,
+    "train_time_sec": 248.21,
+    "infer_throughput": 88185,
+    "model_size_mb": 0.307
+  },
+  "residual_cnn": {
+    "n_params": 135489,
+    "trainable_params": 135489,
+    "accuracy": 0.86726,
+    "train_time_sec": 336.33,
+    "infer_throughput": 71099,
+    "model_size_mb": 0.517
+  },
+  "lstm": {
+    "n_params": 594178,
+    "trainable_params": 594178,
+    "accuracy": 0.90008,
+    "train_time_sec": 184.15,
+    "infer_throughput": 89871,
+    "model_size_mb": 2.267
+  },
+  "gru": {
+    "n_params": 453761,
+    "trainable_params": 453761,
+    "accuracy": 0.88,
+    "train_time_sec": 225.88,
+    "infer_throughput": 117417,
+    "model_size_mb": 1.731
+  }
+}

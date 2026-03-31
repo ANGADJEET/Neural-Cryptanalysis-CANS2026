@@ -1,0 +1,74 @@
+{
+  "rl_acc_mean": 0.50626,
+  "known_acc_mean": 0.55012,
+  "rediscovery_rate": 0.0,
+  "runs": [
+    {
+      "known_delta": "0x00400000",
+      "known_score": 0.462065190076828,
+      "known_acc": 0.5415,
+      "rl_delta": "0x01687987",
+      "rl_score": 0.001698761247098446,
+      "rl_acc": 0.5082,
+      "rl_rediscovered": 0,
+      "random_delta": "0x39d2d0d5",
+      "random_score": 0.0015895897522568703,
+      "random_acc": 0.5113
+    },
+    {
+      "known_delta": "0x00400000",
+      "known_score": 0.4974955916404724,
+      "known_acc": 0.5526,
+      "rl_delta": "0x4946f680",
+      "rl_score": 0.0016242103883996606,
+      "rl_acc": 0.5114000000000001,
+      "rl_rediscovered": 0,
+      "random_delta": "0xd10de7d0",
+      "random_score": 0.0016285396413877606,
+      "random_acc": 0.5079
+    },
+    {
+      "known_delta": "0x00400000",
+      "known_score": 0.5074996948242188,
+      "known_acc": 0.5594,
+      "rl_delta": "0x34571320",
+      "rl_score": 0.001771109877154231,
+      "rl_acc": 0.5037,
+      "rl_rediscovered": 0,
+      "random_delta": "0xc306378e",
+      "random_score": 0.0015376488445326686,
+      "random_acc": 0.509
+    },
+    {
+      "known_delta": "0x00400000",
+      "known_score": 0.45204511284828186,
+      "known_acc": 0.5478,
+      "rl_delta": "0xdd94e102",
+      "rl_score": 0.0019330792129039764,
+      "rl_acc": 0.5048,
+      "rl_rediscovered": 0,
+      "random_delta": "0xf98140e5",
+      "random_score": 0.0019195100758224726,
+      "random_acc": 0.5045999999999999
+    },
+    {
+      "known_delta": "0x00400000",
+      "known_score": 0.4608427584171295,
+      "known_acc": 0.5493,
+      "rl_delta": "0xba7305d6",
+      "rl_score": 0.0019352996023371816,
+      "rl_acc": 0.5032,
+      "rl_rediscovered": 0,
+      "random_delta": "0xdf35246f",
+      "random_score": 0.0018155697034671903,
+      "random_acc": 0.5062
+    }
+  ],
+  "_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ]
+}
