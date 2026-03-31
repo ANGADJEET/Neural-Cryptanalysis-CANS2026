@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E08: Saliency Maps (Multi-Seed)
-
-Compute gradient-based bit importance for a trained distinguisher.
-
-Usage:
-    python experiments/exp08_saliency.py --cipher speck32 --rounds 5 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -31,7 +22,6 @@ from experiments.experiment_utils import (
 
 
 def compute_saliency(model, data_loader, device, n_batches=10):
-    """Compute input × gradient saliency map."""
     model.eval()
     all_saliency = []
     count = 0
@@ -39,7 +29,6 @@ def compute_saliency(model, data_loader, device, n_batches=10):
     for X, Y in data_loader:
         if count >= n_batches:
             break
-        # Only use positive class (real cipher text)
         mask = Y == 1
         if mask.sum() == 0:
             continue
@@ -48,7 +37,6 @@ def compute_saliency(model, data_loader, device, n_batches=10):
         output = model(X_pos).squeeze()
         output.sum().backward()
 
-        # input × gradient (absolute)
         saliency = (X_pos * X_pos.grad).abs().detach().cpu().numpy()
         all_saliency.append(saliency)
         count += 1
@@ -56,7 +44,6 @@ def compute_saliency(model, data_loader, device, n_batches=10):
     all_saliency = np.concatenate(all_saliency, axis=0)
     mean_saliency = all_saliency.mean(axis=0)
 
-    # Normalize to [0, 1]
     if mean_saliency.max() > 0:
         mean_saliency = mean_saliency / mean_saliency.max()
 
@@ -64,7 +51,6 @@ def compute_saliency(model, data_loader, device, n_batches=10):
 
 
 def single_run(seed, args):
-    """One seed: train model, compute saliency."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -129,13 +115,11 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Average saliency across seeds
     saliencies = np.array([r['saliency'] for r in all_runs])
     mean_sal = saliencies.mean(axis=0)
     std_sal = saliencies.std(axis=0)
     top_bits = np.argsort(mean_sal)[-5:][::-1]
 
-    # Plot
     fig, ax = plt.subplots(figsize=(12, 5))
     n_bits = len(mean_sal)
     colors = plt.cm.coolwarm(mean_sal)

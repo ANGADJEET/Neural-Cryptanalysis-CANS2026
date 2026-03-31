@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E10: Difference Search (Multi-Seed)
-
-Grid search over input differences Δp to find the optimal one.
-
-Usage:
-    python experiments/exp10_diff_search.py --cipher speck32 --rounds 5 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -31,17 +22,14 @@ from experiments.experiment_utils import (
 
 
 def single_run(seed, args):
-    """One seed: train distinguisher for each candidate Δp."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
 
-    # Candidate differences
     default_dp = cipher.get_default_delta_p()
     candidates = set([default_dp])
     for i in range(cipher.block_size):
         candidates.add(1 << i)
-    # Add some multi-bit differences
     candidates.update([0x00400000, 0x00800000, 0x00C00000,
                        0x40000000, 0x80000000,
                        0x00010000, 0x00020000])
@@ -113,17 +101,14 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate
     all_keys = sorted(set(k for run in all_runs for k in run))
     aggregated = {}
     for k in all_keys:
         vals = [run.get(k, 0.5) for run in all_runs]
         aggregated[k] = {'mean': float(np.mean(vals)), 'std': float(np.std(vals))}
 
-    # Sort by mean accuracy
     ranked = sorted(aggregated.items(), key=lambda x: -x[1]['mean'])
 
-    # Plot top results
     top_n = min(15, len(ranked))
     names = [r[0] for r in ranked[:top_n]]
     means = [r[1]['mean'] for r in ranked[:top_n]]
@@ -150,7 +135,6 @@ def main():
     save_results(results, str(output_dir),
                  f'e10_{args.cipher}_r{args.rounds}_results.json')
 
-    # Summary
     print(f"\n{'═' * 55}")
     print(f"  Top-5 Δp:")
     for name, data in ranked[:5]:

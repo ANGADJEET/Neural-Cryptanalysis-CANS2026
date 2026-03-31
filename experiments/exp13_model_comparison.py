@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-"""
-E13: Model Architecture Comparison
-
-Train all model architectures on the same task and compare:
-accuracy ± std, parameter count, training time, inference throughput.
-
-Usage:
-    python experiments/exp13_model_comparison.py --cipher speck32 --rounds 5
-    python experiments/exp13_model_comparison.py --cipher speck32 --rounds 5 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -28,9 +17,7 @@ from experiments.experiment_utils import (
     set_seed, add_common_args, save_results, get_device, quick_train_eval
 )
 
-# All model architectures to test (feedforward / 2D input)
 MODELS = ['gohr_mlp', 'mlp', 'cnn', 'residual_cnn', 'siamese']
-# LSTM/GRU need special handling (3D input), test separately
 RNN_MODELS = ['lstm', 'gru']
 
 
@@ -90,7 +77,6 @@ def main():
             seed_results.append(metrics)
             print(f"acc={metrics['accuracy']:.4f}, time={metrics['train_time']:.1f}s")
 
-        # Aggregate
         accs = [r['accuracy'] for r in seed_results]
         all_results[model_name] = {
             'accuracy_mean': float(np.mean(accs)),
@@ -102,7 +88,6 @@ def main():
         }
         print(f"  → {model_name}: {np.mean(accs):.4f} ± {np.std(accs):.4f}")
 
-    # Handle RNN models (need 3D input)
     for model_name in RNN_MODELS:
         print(f"\n{'━' * 50}")
         print(f"  Model: {model_name} (sequence input)")
@@ -123,7 +108,6 @@ def main():
 
             input_dim = get_input_dim(args.representation, cipher.block_size)
 
-            # Build 3D data for RNN: (batch, seq_len=1, features)
             from data.representations import RepresentationFactory
             from torch.utils.data import DataLoader, TensorDataset
             import time as _time
@@ -136,7 +120,6 @@ def main():
             X_test = factory.get_representation(args.representation,
                                                  test_data['C'], test_data['C_prime'])
 
-            # Reshape to 3D: (batch, 1, features)
             X_train_t = torch.from_numpy(X_train).float().unsqueeze(1)
             X_val_t = torch.from_numpy(X_val).float().unsqueeze(1)
             X_test_t = torch.from_numpy(X_test).float().unsqueeze(1)
@@ -186,7 +169,6 @@ def main():
         }
         print(f"  → {model_name}: {np.mean(accs):.4f} ± {np.std(accs):.4f}")
 
-    # Print comparison table
     print(f"\n{'═' * 70}")
     print(f"  {'Model':<12} {'Params':>10} {'Accuracy':>16} {'Train (s)':>10}")
     print(f"{'─' * 70}")
@@ -196,7 +178,6 @@ def main():
               f"{r['train_time_mean']:>10.1f}")
     print(f"{'═' * 70}")
 
-    # Plot
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
     names = list(all_results.keys())
@@ -204,7 +185,6 @@ def main():
     stds = [all_results[n]['accuracy_std'] for n in names]
     params = [all_results[n]['n_params'] for n in names]
 
-    # Accuracy bar chart with error bars
     colors = plt.cm.Set2(np.linspace(0, 1, len(names)))
     bars = axes[0].bar(names, means, yerr=stds, capsize=5, color=colors,
                        edgecolor='black', alpha=0.85)
@@ -214,7 +194,6 @@ def main():
     axes[0].set_ylim(0.45, 1.0)
     axes[0].grid(True, alpha=0.3, axis='y')
 
-    # Accuracy vs Parameters scatter
     axes[1].scatter(params, means, s=120, c=colors, edgecolors='black', zorder=5)
     for i, name in enumerate(names):
         axes[1].annotate(name, (params[i], means[i]),

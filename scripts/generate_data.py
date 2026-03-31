@@ -1,17 +1,8 @@
-#!/usr/bin/env python
-"""
-Script to generate datasets for neural cryptanalysis experiments.
-
-Usage:
-    python scripts/generate_data.py --cipher speck32 --rounds 5 --samples 1000000
-    python scripts/generate_data.py --cipher simon32 --rounds 5 8 --samples 10000000
-"""
 
 import argparse
 import sys
 from pathlib import Path
 
-# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data.generator import CipherDataGenerator, generate_dataset
@@ -96,7 +87,6 @@ def parse_args():
 
 
 def get_default_delta_p(cipher: str) -> int:
-    """Get default input difference for cipher."""
     defaults = {
         'speck32': 0x00400000,
         'simon32': 0x00000001,
@@ -108,13 +98,11 @@ def get_default_delta_p(cipher: str) -> int:
 def main():
     args = parse_args()
     
-    # Parse delta_p
     if args.delta_p:
         delta_p = int(args.delta_p, 16)
     else:
         delta_p = get_default_delta_p(args.cipher)
     
-    # Calculate split sizes
     n_train = int(args.samples * args.train_ratio)
     n_val = int(args.samples * args.val_ratio)
     n_test = args.samples - n_train - n_val

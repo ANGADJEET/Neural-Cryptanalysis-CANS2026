@@ -1,21 +1,3 @@
-"""
-Shared utilities for reproducible, multi-seed experiment execution.
-
-Usage:
-    from experiment_utils import set_seed, run_multi_seed, add_common_args
-
-    parser = argparse.ArgumentParser()
-    add_common_args(parser)
-    args = parser.parse_args()
-
-    def single_run(seed, args):
-        set_seed(seed)
-        # ... train and evaluate ...
-        return {'accuracy': acc, 'advantage': adv}
-
-    results = run_multi_seed(single_run, args)
-    # results = {'accuracy': {'mean': 0.73, 'std': 0.01, 'values': [...]}, ...}
-"""
 
 import argparse
 import time
@@ -27,7 +9,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 
 def set_seed(seed: int) -> None:
-    """Set all random seeds for reproducibility."""
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -38,7 +19,6 @@ def set_seed(seed: int) -> None:
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
-    """Add standard experiment arguments to any parser."""
     parser.add_argument('--seed', type=int, default=42, help='Base random seed')
     parser.add_argument('--n-seeds', type=int, default=5, help='Number of seeds to run')
     parser.add_argument('--cipher', default='speck32',
@@ -52,16 +32,6 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 
 def aggregate_results(results_list: List[Dict]) -> Dict:
-    """
-    Aggregate results from multiple seed runs.
-
-    Args:
-        results_list: List of dicts from each seed run.
-                      Values can be floats, dicts, or lists.
-
-    Returns:
-        Dict with mean, std, and per-seed values for each numeric key.
-    """
     if not results_list:
         return {}
 
@@ -74,7 +44,6 @@ def aggregate_results(results_list: List[Dict]) -> Dict:
         if not values:
             continue
 
-        # Numeric scalar
         if isinstance(values[0], (int, float)):
             arr = np.array(values, dtype=float)
             aggregated[key] = {
@@ -84,7 +53,6 @@ def aggregate_results(results_list: List[Dict]) -> Dict:
                 'ci95_upper': float(np.percentile(arr, 97.5)),
                 'values': [float(v) for v in arr],
             }
-        # Nested dict (e.g., per-round results)
         elif isinstance(values[0], dict):
             inner_keys = values[0].keys()
             aggregated[key] = {}
@@ -110,17 +78,6 @@ def run_multi_seed(
     args: argparse.Namespace,
     seeds: Optional[List[int]] = None,
 ) -> Dict:
-    """
-    Run an experiment function across multiple seeds.
-
-    Args:
-        experiment_fn: Function(seed, args) -> dict of results
-        args: Parsed arguments (must have seed, n_seeds)
-        seeds: Explicit seed list (overrides args.seed + args.n_seeds)
-
-    Returns:
-        Aggregated results with mean ± std for each metric.
-    """
     if seeds is None:
         seeds = [args.seed + i for i in range(args.n_seeds)]
 
@@ -147,7 +104,6 @@ def run_multi_seed(
 
 
 def save_results(results: Dict, output_dir: str, filename: str) -> None:
-    """Save results dict as JSON."""
     path = Path(output_dir)
     path.mkdir(parents=True, exist_ok=True)
     with open(path / filename, 'w') as f:
@@ -156,7 +112,6 @@ def save_results(results: Dict, output_dir: str, filename: str) -> None:
 
 
 def get_device(args: argparse.Namespace) -> str:
-    """Get compute device, falling back to CPU if CUDA unavailable."""
     if args.device == 'cuda' and not torch.cuda.is_available():
         print("  ⚠ CUDA not available, using CPU")
         return 'cpu'
@@ -175,12 +130,6 @@ def quick_train_eval(
     n_epochs: int,
     device: str,
 ) -> Dict:
-    """
-    Train a model and return evaluation metrics + timing.
-
-    Returns:
-        Dict with accuracy, advantage, train_time, n_params, etc.
-    """
     from models import get_model
     from data.dataloader import CryptoDataset
     from training.trainer import Trainer
@@ -209,7 +158,6 @@ def quick_train_eval(
 
     metrics = evaluate_model(model, test_loader, device)
 
-    # Inference throughput
     model.eval()
     t0 = time.time()
     n_infer = 0

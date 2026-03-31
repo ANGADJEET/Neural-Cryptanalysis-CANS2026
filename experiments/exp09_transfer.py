@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E09: Transfer Learning (Multi-Seed)
-
-Test cross-round and cross-cipher transfer of trained distinguishers.
-
-Usage:
-    python experiments/exp09_transfer.py --cipher speck32 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -31,12 +22,10 @@ from experiments.experiment_utils import (
 
 
 def single_run(seed, args):
-    """One seed: train source, evaluate on targets."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
 
-    # Train on source rounds
     gen = CipherDataGenerator(
         cipher=args.cipher, n_rounds=args.source_rounds,
         delta_p=cipher.get_default_delta_p()
@@ -60,7 +49,6 @@ def single_run(seed, args):
     source_metrics = evaluate_model(model, val_loader, device)
     print(f"    Source ({args.cipher}, {args.source_rounds}r): {source_metrics['accuracy']:.4f}")
 
-    # Cross-round transfer
     cross_round = {}
     target_rounds = [r for r in args.target_rounds if r != args.source_rounds]
     for tr in target_rounds:
@@ -75,7 +63,6 @@ def single_run(seed, args):
         cross_round[str(tr)] = float(tmetrics['accuracy'])
         print(f"    → {args.cipher} {tr}r: {tmetrics['accuracy']:.4f}")
 
-    # Cross-cipher transfer (same block size only)
     cross_cipher = {}
     target_ciphers = [c for c in ['speck32', 'simon32'] if c != args.cipher]
     for tc in target_ciphers:
@@ -129,7 +116,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate cross-round
     target_rounds = [r for r in args.target_rounds if r != args.source_rounds]
     cr_agg = {}
     for tr in target_rounds:
@@ -137,10 +123,8 @@ def main():
         vals = [r['cross_round'].get(key, 0.5) for r in all_runs]
         cr_agg[key] = {'mean': float(np.mean(vals)), 'std': float(np.std(vals))}
 
-    # Plot
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-    # Cross-round
     src_mean = float(np.mean([r['source_accuracy'] for r in all_runs]))
     r_keys = sorted([int(k) for k in cr_agg.keys()])
     r_means = [cr_agg[str(r)]['mean'] for r in r_keys]
@@ -157,7 +141,6 @@ def main():
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
-    # Cross-cipher
     cc_names = list(set(k for r in all_runs for k in r['cross_cipher']))
     if cc_names:
         cc_means = [float(np.mean([r['cross_cipher'].get(c, 0.5) for r in all_runs])) for c in cc_names]

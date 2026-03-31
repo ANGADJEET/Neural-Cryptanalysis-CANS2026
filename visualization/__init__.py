@@ -1,6 +1,3 @@
-"""
-Visualization utilities for neural cryptanalysis.
-"""
 
 from .plots import (
     plot_accuracy_vs_rounds,

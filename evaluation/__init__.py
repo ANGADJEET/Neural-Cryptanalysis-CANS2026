@@ -1,6 +1,3 @@
-"""
-Evaluation utilities for neural cryptanalysis.
-"""
 
 from .metrics import (
     compute_accuracy,

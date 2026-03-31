@@ -1,23 +1,3 @@
-#!/usr/bin/env python
-"""
-E17: Neural Round Inverter — Chained Autoencoders
-
-Train autoencoders to invert individual cipher rounds:
-    AE_r: ΔR_{r+1} → bottleneck → ΔR_r
-
-Then chain them to "peel back" multiple rounds from the final ciphertext:
-    ΔR_7 → AE_7 → ΔR̂_6 → AE_6 → ΔR̂_5 → ... → ΔR̂_3
-
-Finally, feed the recovered early-round estimate into a distinguisher to see
-if the chain recovers enough signal for classification.
-
-If the chain works, it demonstrates that a neural network can partially
-invert cipher rounds — a genuine cryptanalytic capability.
-
-Usage:
-    python experiments/exp17_round_inverter.py --cipher speck32 --rounds 8
-    python experiments/exp17_round_inverter.py --cipher speck32 --rounds 8 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -40,18 +20,7 @@ from experiments.experiment_utils import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Models
-# ═══════════════════════════════════════════════════════════════════
-
 class RoundInverterAE(nn.Module):
-    """
-    Autoencoder that learns to invert one cipher round:
-        ΔR_{r+1} → encoder → bottleneck → decoder → ΔR_r
-
-    The bottleneck forces the model to learn a compressed representation
-    of the differential structure, preventing memorization.
-    """
 
     def __init__(self, dim, bottleneck_dim=24, hidden=256):
         super().__init__()
@@ -72,7 +41,7 @@ class RoundInverterAE(nn.Module):
             nn.BatchNorm1d(hidden),
             nn.ReLU(),
             nn.Linear(hidden, dim),
-            nn.Sigmoid(),  # output is bits in [0, 1]
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -84,7 +53,6 @@ class RoundInverterAE(nn.Module):
 
 
 class SimpleDistinguisher(nn.Module):
-    """Small MLP classifier: recovered differential → cipher or random."""
 
     def __init__(self, input_dim, hidden=128):
         super().__init__()
@@ -103,18 +71,12 @@ class SimpleDistinguisher(nn.Module):
         return self.net(x).squeeze(-1)
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Data Generation
-# ═══════════════════════════════════════════════════════════════════
-
 def generate_traces(cipher_name, cipher, n_rounds, n_samples):
-    """Generate XOR-difference traces for differential and random pairs."""
     key = cipher.random_key()
     delta_p = cipher.get_default_delta_p()
     factory = RepresentationFactory(block_size=cipher.block_size)
     half = n_samples // 2
 
-    # Differential pairs
     P = cipher.random_plaintexts(half)
     P_prime = (P ^ delta_p).astype(P.dtype)
     _, trace1 = cipher.encrypt_with_trace(P, n_rounds, key)
@@ -124,9 +86,8 @@ def generate_traces(cipher_name, cipher, n_rounds, n_samples):
     for r in range(n_rounds):
         diff = factory.get_representation('R2_xor_diff', trace1[r], trace2[r])
         diff_traces.append(diff)
-    diff_traces = np.stack(diff_traces, axis=1)  # (half, n_rounds, block_size)
+    diff_traces = np.stack(diff_traces, axis=1)
 
-    # Random (independent) pairs
     Q = cipher.random_plaintexts(half)
     R = cipher.random_plaintexts(half)
     _, trace_q = cipher.encrypt_with_trace(Q, n_rounds, key)
@@ -141,12 +102,7 @@ def generate_traces(cipher_name, cipher, n_rounds, n_samples):
     return diff_traces, rand_traces
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Training
-# ═══════════════════════════════════════════════════════════════════
-
 def train_inverter(model, X_input, X_target, n_epochs, batch_size, device, lr=1e-3):
-    """Train one autoencoder to invert a single round."""
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
@@ -172,7 +128,6 @@ def train_inverter(model, X_input, X_target, n_epochs, batch_size, device, lr=1e
         if (epoch + 1) % 10 == 0 or epoch == 0:
             print(f"        epoch {epoch+1}/{n_epochs} mse={total_loss/n:.6f}", flush=True)
 
-    # Final MSE on full data
     model.eval()
     with torch.no_grad():
         pred = model(X_in_t.to(device))
@@ -181,7 +136,6 @@ def train_inverter(model, X_input, X_target, n_epochs, batch_size, device, lr=1e
 
 
 def train_distinguisher(model, X, Y, n_epochs, batch_size, device, lr=1e-3):
-    """Train a binary classifier on recovered differentials."""
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.BCELoss()
@@ -201,17 +155,12 @@ def train_distinguisher(model, X, Y, n_epochs, batch_size, device, lr=1e-3):
             loss.backward()
             optimizer.step()
 
-    # Evaluate
     model.eval()
     with torch.no_grad():
         preds = model(X_t.to(device)).cpu().numpy()
         acc = float(np.mean((preds > 0.5) == Y))
     return acc
 
-
-# ═══════════════════════════════════════════════════════════════════
-#  Main Experiment
-# ═══════════════════════════════════════════════════════════════════
 
 def single_run(seed, args):
     set_seed(seed)
@@ -224,15 +173,11 @@ def single_run(seed, args):
     )
     n_train = int(0.8 * (args.samples // 2))
 
-    # ─── Phase 1: Train individual round inverters ────────────────
     print(f"    Phase 1: Training round inverters...")
     inverters = {}
     inversion_mse = {}
 
     for r in range(args.rounds - 1, 0, -1):
-        # Train AE_r: ΔR_r → ΔR_{r-1}  (invert round r)
-        # Input:  diff_traces at round r
-        # Target: diff_traces at round r-1
         X_in = diff_traces[:n_train, r, :]
         X_tgt = diff_traces[:n_train, r - 1, :]
 
@@ -246,31 +191,24 @@ def single_run(seed, args):
         inversion_mse[str(r)] = float(mse)
         print(f"      → MSE = {mse:.6f}")
 
-    # ─── Phase 2: Chain inverters and measure signal recovery ─────
     print(f"\n    Phase 2: Chaining inverters...")
-    n_eval = args.samples // 2  # use all data for eval
+    n_eval = args.samples // 2
 
     chain_results = {}
 
-    # Start from the LAST round
     last_round = args.rounds - 1
 
-    # Baseline: direct distinguisher accuracy at each round (ground truth)
     print(f"\n    {'Round':<10} {'Direct Acc':<14} {'Chain Acc':<14} {'Inversion MSE':>14}")
     print(f"    {'─' * 54}")
 
-    # Current chain output starts at the last round
-    # For cipher traces
     cipher_current = torch.from_numpy(
         diff_traces[:n_eval, last_round, :]
     ).float().to(device)
-    # For random traces
     random_current = torch.from_numpy(
         rand_traces[:n_eval, last_round, :]
     ).float().to(device)
 
     for target_r in range(last_round, -1, -1):
-        # Direct accuracy: distinguisher on ground-truth ΔR at this round
         X_direct = np.concatenate([
             diff_traces[:n_eval, target_r, :],
             rand_traces[:n_eval, target_r, :]
@@ -285,13 +223,10 @@ def single_run(seed, args):
             n_epochs=15, batch_size=args.batch_size, device=device
         )
 
-        # Chain accuracy: distinguisher on chain-recovered ΔR̂ at this round
         if target_r == last_round:
-            # No inversion needed — this is the starting point
             chain_cipher = cipher_current.cpu().numpy()
             chain_random = random_current.cpu().numpy()
         else:
-            # Apply inverter to go from current → target
             ae = inverters[target_r + 1]
             ae.eval()
             with torch.no_grad():
@@ -324,10 +259,8 @@ def single_run(seed, args):
 
 
 def plot_results(all_results, args, output_dir):
-    """Plot direct vs chain-recovered accuracy across rounds."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Aggregate across seeds
     rounds = sorted([int(k) for k in all_results[0]['chain_results'].keys()])
 
     direct_means, chain_means = [], []
@@ -343,7 +276,6 @@ def plot_results(all_results, args, output_dir):
 
     round_labels = [r + 1 for r in rounds]
 
-    # Plot 1: Direct vs Chain accuracy
     axes[0].errorbar(round_labels, direct_means, yerr=direct_stds,
                      fmt='bs-', linewidth=2, markersize=8, capsize=4,
                      label='Direct (ground truth)')
@@ -358,7 +290,6 @@ def plot_results(all_results, args, output_dir):
     axes[0].grid(True, alpha=0.3)
     axes[0].set_ylim(0.45, 1.05)
 
-    # Plot 2: Inversion MSE per round
     inv_rounds = sorted([int(k) for k in all_results[0]['inversion_mse'].keys()])
     inv_means = []
     inv_stds_list = []
@@ -411,7 +342,6 @@ def main():
         all_results.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Summary
     rounds = sorted([int(k) for k in all_results[0]['chain_results'].keys()])
     print(f"\n{'═' * 60}")
     print(f"  {'Round':<8} {'Direct':<14} {'Recovered':<14} {'Recovery %':>10}")
@@ -433,7 +363,6 @@ def main():
         print(f"\n  ✗ Chain fails to recover signal — round inversion is too lossy.")
         print(f"     → Individual round inversions compound errors too quickly.")
 
-    # Save
     agg = {}
     for r in rounds:
         agg[str(r)] = {

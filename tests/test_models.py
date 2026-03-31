@@ -1,8 +1,3 @@
-"""
-Tests for model architectures.
-
-Verifies forward pass shapes, output ranges, and model factory for all architectures.
-"""
 
 import pytest
 import torch
@@ -16,7 +11,6 @@ from models import get_model
 
 
 class TestModelFactory:
-    """Test the get_model factory function."""
     
     VALID_MODELS = ['mlp', 'gohr_mlp', 'cnn', 'residual_cnn', 'siamese', 'lstm', 'gru']
     
@@ -35,7 +29,6 @@ class TestModelFactory:
 
 
 class TestMLPModels:
-    """Test MLP-based models."""
     
     def test_mlp_forward_shape(self):
         model = get_model('mlp', input_dim=32)
@@ -58,13 +51,12 @@ class TestMLPModels:
     
     def test_mlp_flattens_multidim_input(self):
         model = get_model('mlp', input_dim=64)
-        x = torch.randn(8, 2, 32)  # Multi-dim input
+        x = torch.randn(8, 2, 32)
         out = model(x)
         assert out.shape == (8, 1)
 
 
 class TestCNNModels:
-    """Test CNN-based models."""
     
     def test_cnn_forward_shape(self):
         model = get_model('cnn', input_dim=32)
@@ -87,11 +79,9 @@ class TestCNNModels:
 
 
 class TestRNNModels:
-    """Test RNN-based models."""
     
     def test_lstm_forward_3d(self):
         model = get_model('lstm', input_dim=32)
-        # 3D input: (batch, seq_len, features) — required by LSTM
         x = torch.randn(8, 5, 32)
         out = model(x)
         assert out.shape == (8, 1)
@@ -104,7 +94,6 @@ class TestRNNModels:
     
     def test_lstm_single_step(self):
         model = get_model('lstm', input_dim=32)
-        # Single timestep: (batch, 1, features)
         x = torch.randn(8, 1, 32)
         out = model(x)
         assert out.shape == (8, 1)
@@ -118,12 +107,10 @@ class TestRNNModels:
 
 
 class TestSiameseModel:
-    """Test Siamese network."""
     
     def test_siamese_forward_2d(self):
         model = get_model('siamese', input_dim=32)
-        # Siamese expects (batch, 2*dim) which it splits
-        x = torch.randn(8, 64)  # 2 * 32
+        x = torch.randn(8, 64)
         out = model(x)
         assert out.shape == (8, 1)
     
@@ -141,7 +128,6 @@ class TestSiameseModel:
 
 
 class TestModelParameterCounts:
-    """Sanity checks on model sizes."""
     
     def test_models_have_parameters(self):
         for name in ['mlp', 'gohr_mlp', 'cnn', 'residual_cnn', 'lstm', 'gru', 'siamese']:

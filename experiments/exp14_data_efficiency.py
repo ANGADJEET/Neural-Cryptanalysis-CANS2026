@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-"""
-E14: Data Efficiency Curve
-
-Measure how accuracy scales with training set size.
-Critical for understanding the sample complexity of neural distinguishers.
-
-Usage:
-    python experiments/exp14_data_efficiency.py --cipher speck32 --rounds 5
-    python experiments/exp14_data_efficiency.py --cipher speck32 --rounds 5 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -35,19 +24,17 @@ DATASET_SIZES = [1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000]
 
 
 def single_run(seed, args):
-    """One seed: accuracy at each dataset size."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
 
-    # Generate the largest dataset, then subsample
     gen = CipherDataGenerator(
         cipher=args.cipher, n_rounds=args.rounds,
         delta_p=cipher.get_default_delta_p()
     )
     max_size = max(args.sizes)
     full_data = gen.generate_balanced_dataset(max_size)
-    test_data = gen.generate_balanced_dataset(50_000)  # Fixed test set
+    test_data = gen.generate_balanced_dataset(50_000)
 
     input_dim = get_input_dim('R2_xor_diff', cipher.block_size)
     test_ds = CryptoDataset(test_data, 'R2_xor_diff', cipher.block_size)
@@ -58,7 +45,6 @@ def single_run(seed, args):
     for size in args.sizes:
         print(f"    N={size:>10,}...", end=' ')
 
-        # Subsample
         if size <= max_size:
             sub_data = {k: v[:size] if hasattr(v, '__len__') and len(v) >= size else v
                         for k, v in full_data.items()}
@@ -110,7 +96,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate: mean ± std per size
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -126,7 +111,6 @@ def main():
                 'values': [float(v) for v in vals],
             }
 
-    # Plot
     fig, ax = plt.subplots(figsize=(9, 6))
     x = sorted([int(k) for k in aggregated.keys()])
     means = [aggregated[str(s)]['mean'] for s in x]
@@ -159,7 +143,6 @@ def main():
     save_results(results, str(output_dir),
                  f'e14_{args.cipher}_r{args.rounds}_results.json')
 
-    # Summary table
     print(f"\n{'═' * 50}")
     print(f"  {'Size':>12}  {'Accuracy':>16}")
     print(f"{'─' * 50}")

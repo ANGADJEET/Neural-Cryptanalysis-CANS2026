@@ -1,6 +1,3 @@
-"""
-Tests for data generation and representation pipeline.
-"""
 
 import pytest
 import numpy as np
@@ -14,10 +11,8 @@ from data.generator import CipherDataGenerator, validate_dataset
 
 
 class TestRepresentationShapes:
-    """Test that all representations produce correct output shapes."""
     
     def setup_method(self):
-        """Set up test data."""
         np.random.seed(42)
         self.n = 100
         self.C_32 = np.random.randint(0, 2**32, size=self.n, dtype=np.uint32)
@@ -45,18 +40,18 @@ class TestRepresentationShapes:
     
     def test_r4_bit_sliced_shape(self):
         X = self.factory_32.get_representation('R4_bit_sliced', self.C_32, self.C_prime_32)
-        assert X.shape == (self.n, 2, 2, 16)  # 32-bit = 2 words of 16 bits
+        assert X.shape == (self.n, 2, 2, 16)
     
     def test_r5_word_level_shape(self):
         X = self.factory_32.get_representation('R5_word_level', self.C_32, self.C_prime_32)
-        assert X.shape == (self.n, 4)  # 2 * (32 / 16) = 4 words
+        assert X.shape == (self.n, 4)
     
     def test_r6_joint_pc_shape(self):
         X = self.factory_32.get_representation(
             'R6_joint_pc', self.C_32, self.C_prime_32,
             P=self.P_32, P_prime=self.P_prime_32
         )
-        assert X.shape == (self.n, 128)  # 4 * 32 bits
+        assert X.shape == (self.n, 128)
     
     def test_r6_requires_plaintext(self):
         with pytest.raises(ValueError, match="requires plaintext"):
@@ -64,7 +59,7 @@ class TestRepresentationShapes:
     
     def test_r8_statistical_shape(self):
         X = self.factory_32.get_representation('R8_statistical', self.C_32, self.C_prime_32)
-        assert X.shape == (self.n, 1 + 32 + 4)  # HW + bits + block_stats
+        assert X.shape == (self.n, 1 + 32 + 4)
     
     def test_r9_masked_shape(self):
         X = self.factory_32.get_representation('R9_masked', self.C_32, self.C_prime_32)
@@ -88,7 +83,6 @@ class TestRepresentationShapes:
 
 
 class TestDataGenerator:
-    """Test the data generation pipeline."""
     
     def test_balanced_dataset(self, small_generator):
         data = small_generator.generate_balanced_dataset(1000)
@@ -114,20 +108,16 @@ class TestDataGenerator:
         assert len(data['P']) == 100
     
     def test_r6_no_zeros_for_random(self, small_generator):
-        """Critical test: random samples should NOT have all-zero plaintexts."""
         data = small_generator.generate_balanced_dataset(1000, include_plaintext=True)
         
-        # Get random sample indices (label == 0)
         random_mask = data['labels'] == 0
         random_P = data['P'][random_mask]
         random_P_prime = data['P_prime'][random_mask]
         
-        # Random plaintexts should NOT be all zeros
         assert not np.all(random_P == 0), "Random sample plaintexts are all zeros — R6 bug!"
         assert not np.all(random_P_prime == 0), "Random sample P_prime are all zeros — R6 bug!"
     
     def test_differential_correctness(self, small_generator):
-        """Test that cipher samples use correct input difference."""
         data = small_generator.generate_cipher_samples(100, include_plaintext=True)
         delta = data['P'] ^ data['P_prime']
         assert np.all(delta == 0x00400000)
@@ -140,7 +130,6 @@ class TestDataGenerator:
 
 
 class TestValidateDataset:
-    """Test the validate_dataset function."""
     
     def test_valid_dataset(self):
         data = {

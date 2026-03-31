@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-"""
-E11: Classical vs Neural Comparison (with Gohr Reference Data)
-
-Compare neural distinguisher accuracy vs classical differential probability
-AND Gohr (CRYPTO 2019) published results.
-
-Usage:
-    python experiments/exp11_classical.py --cipher speck32
-    python experiments/exp11_classical.py --cipher speck32 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -32,16 +21,13 @@ from experiments.experiment_utils import (
     set_seed, add_common_args, run_multi_seed, save_results, get_device
 )
 
-# Gohr (CRYPTO 2019) Table 1: SPECK32/64 best reported accuracy
-# These are from the published paper using a deep residual network
 GOHR_RESULTS = {
     'speck32': {
-        5: 0.9244,   # 5 rounds
-        6: 0.7880,   # 6 rounds
-        7: 0.6116,   # 7 rounds
-        8: 0.5134,   # 8 rounds
+        5: 0.9244,
+        6: 0.7880,
+        7: 0.6116,
+        8: 0.5134,
     },
-    # Approximate results from follow-up works
     'simon32': {
         5: 0.88,
         6: 0.72,
@@ -52,7 +38,6 @@ GOHR_RESULTS = {
 
 
 def single_run(seed, args):
-    """One seed: train and evaluate across rounds."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -64,8 +49,6 @@ def single_run(seed, args):
     for n_rounds in rounds_list:
         print(f"    Round {n_rounds}...", end=' ')
 
-        # Classical DP: estimate empirically
-        # Use multiple output differences, not just 0
         dp = compute_differential_probability(
             diff_in=cipher.get_default_delta_p(),
             diff_out=0,
@@ -75,7 +58,6 @@ def single_run(seed, args):
         )
         classical_dp[n_rounds] = float(dp)
 
-        # Neural: train distinguisher
         gen = CipherDataGenerator(
             cipher=args.cipher, n_rounds=n_rounds,
             delta_p=cipher.get_default_delta_p()
@@ -130,11 +112,9 @@ def main():
 
     results = run_multi_seed(single_run, args)
 
-    # Compute means/stds for neural accuracy
     rounds_list = args.round_list
     seeds = [args.seed + i for i in range(args.n_seeds)]
 
-    # Manually aggregate per-round results
     neural_means = {}
     neural_stds = {}
     classical_means = {}
@@ -143,7 +123,7 @@ def main():
         key = str(r)
         neural_vals = []
         dp_vals = []
-        for seed_result in [results]:  # results already aggregated
+        for seed_result in [results]:
             if 'neural' in results and key in results['neural']:
                 nr = results['neural'][key]
                 if isinstance(nr, dict) and 'values' in nr:
@@ -161,10 +141,8 @@ def main():
                 elif isinstance(dp, (int, float)):
                     classical_means[r] = min(1.0, 0.5 + dp)
 
-    # Gohr reference
     gohr = GOHR_RESULTS.get(args.cipher, {})
 
-    # ── Plot ─────────────────────────────────────────────────
     fig, ax = plt.subplots(figsize=(10, 6))
 
     rounds = sorted(neural_means.keys())
@@ -203,7 +181,6 @@ def main():
     results['gohr_reference'] = {str(k): v for k, v in gohr.items()}
     save_results(results, str(output_dir), f'e11_{args.cipher}_results.json')
 
-    # Summary table
     print(f"\n{'═' * 65}")
     print(f"  {'Round':>5}  {'Ours':>16}  {'Classical':>10}  {'Gohr 2019':>10}")
     print(f"{'─' * 65}")

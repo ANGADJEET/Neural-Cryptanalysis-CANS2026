@@ -1,6 +1,3 @@
-"""
-Data generation and representation modules for neural cryptanalysis.
-"""
 
 from .generator import CipherDataGenerator, generate_dataset
 from .representations import RepresentationFactory, REPRESENTATION_REGISTRY

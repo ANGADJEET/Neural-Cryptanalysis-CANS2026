@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E07: Signal Decay Heatmap (Multi-Seed)
-
-Sweep (rounds × Δp) grid, train a quick model at each cell.
-
-Usage:
-    python experiments/exp07_signal_decay.py --cipher speck32 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -32,13 +23,11 @@ from experiments.experiment_utils import (
 
 
 def single_run(seed, args):
-    """One seed: accuracy heatmap."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
 
     rounds_range = list(range(args.min_rounds, args.max_rounds + 1))
-    # Generate candidate input differences
     default_dp = cipher.get_default_delta_p()
     single_bit_diffs = [1 << i for i in range(0, cipher.block_size, 4)]
     diffs = sorted(set([default_dp] + single_bit_diffs[:6]))[:8]
@@ -111,7 +100,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate and build heatmap
     rounds_range = list(range(args.min_rounds, args.max_rounds + 1))
     default_dp = cipher.get_default_delta_p()
     single_bit_diffs = [1 << i for i in range(0, cipher.block_size, 4)]
@@ -124,7 +112,6 @@ def main():
             vals = [run.get(key, 0.5) for run in all_runs]
             heatmap[i, j] = np.mean(vals)
 
-    # Plot
     fig, ax = plt.subplots(figsize=(10, 6))
     diff_labels = [f'0x{dp:08x}' for dp in diffs]
     sns.heatmap(heatmap, annot=True, fmt='.3f', cmap='RdYlGn',

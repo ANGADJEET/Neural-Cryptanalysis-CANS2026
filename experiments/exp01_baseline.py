@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-"""
-E01: Baseline Distinguisher (Multi-Seed)
-
-Train a neural distinguisher and measure accuracy ± std across round counts.
-
-Usage:
-    python experiments/exp01_baseline.py --cipher speck32
-    python experiments/exp01_baseline.py --cipher speck32 --n-seeds 5 --rounds 3 4 5 6 7 8 9
-"""
 
 import argparse
 import sys
@@ -34,7 +24,6 @@ from experiments.experiment_utils import (
 
 def train_one_round(cipher_name, cipher, n_rounds, model_name, representation,
                      n_samples, batch_size, n_epochs, device):
-    """Train and evaluate a distinguisher for a single round count."""
     gen = CipherDataGenerator(
         cipher=cipher_name, n_rounds=n_rounds,
         delta_p=cipher.get_default_delta_p()
@@ -66,7 +55,6 @@ def train_one_round(cipher_name, cipher, n_rounds, model_name, representation,
 
 
 def single_run(seed, args):
-    """One seed: accuracy at each round count."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -114,7 +102,6 @@ def main():
     else:
         args.round_list = args.rounds
 
-    # Multi-seed runs
     seeds = [args.seed + i for i in range(args.n_seeds)]
     all_runs = []
 
@@ -124,7 +111,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate
     aggregated = {}
     for r in args.round_list:
         key = str(r)
@@ -135,7 +121,6 @@ def main():
             'values': [float(v) for v in vals],
         }
 
-    # Plot with error bars
     fig, ax = plt.subplots(figsize=(9, 6))
     rounds = sorted([int(k) for k in aggregated.keys()])
     means = [aggregated[str(r)]['mean'] for r in rounds]
@@ -166,7 +151,6 @@ def main():
     }
     save_results(results, str(output_dir), f'e01_{args.cipher}_results.json')
 
-    # Summary
     print(f"\n{'═' * 50}")
     print(f"  {'Round':>5}  {'Accuracy':>16}")
     print(f"{'─' * 50}")

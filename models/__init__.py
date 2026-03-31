@@ -1,6 +1,3 @@
-"""
-Neural network models for cryptanalysis.
-"""
 
 from .mlp import MLP, GohrMLP
 from .cnn import CNN, ResidualCNN
@@ -22,17 +19,6 @@ __all__ = [
 
 
 def get_model(name: str, input_dim: int, **kwargs):
-    """
-    Factory function to get model by name.
-    
-    Args:
-        name: Model name ('mlp', 'cnn', 'siamese', 'lstm', 'mine')
-        input_dim: Input dimension
-        **kwargs: Model-specific arguments
-        
-    Returns:
-        Model instance
-    """
     models = {
         'mlp': MLP,
         'gohr_mlp': GohrMLP,

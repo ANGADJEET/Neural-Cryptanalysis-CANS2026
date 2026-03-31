@@ -1,25 +1,3 @@
-#!/usr/bin/env python
-"""
-E16: Generative Markov Test — VAE Round Transition Predictor
-
-Train generative models to predict the next round's XOR difference from the
-current round's. Compare a 1-step (Markov) model against a 2-step (memory)
-model, and visualise the latent space to see how cipher vs random structure
-evolves across rounds.
-
-Key idea:
-  - Model A (Markov):  predict ΔR_{r+1} from ΔR_r
-  - Model B (Memory):  predict ΔR_{r+1} from [ΔR_{r-1}, ΔR_r]
-  If B has significantly lower reconstruction error than A, the differential
-  propagation carries exploitable cross-round memory.
-
-Additionally, encode each round's ΔR into a VAE latent space and plot
-t-SNE / PCA coloured by label (cipher vs random) to visualise signal decay.
-
-Usage:
-    python experiments/exp16_generative_markov.py --cipher speck32 --rounds 8
-    python experiments/exp16_generative_markov.py --cipher speck32 --rounds 8 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -43,12 +21,7 @@ from experiments.experiment_utils import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Models
-# ═══════════════════════════════════════════════════════════════════
-
 class RoundPredictor(nn.Module):
-    """MLP that predicts ΔR_{r+1} from input (either ΔR_r or [ΔR_{r-1}, ΔR_r])."""
 
     def __init__(self, input_dim, output_dim, hidden=256):
         super().__init__()
@@ -63,7 +36,7 @@ class RoundPredictor(nn.Module):
             nn.BatchNorm1d(hidden),
             nn.ReLU(),
             nn.Linear(hidden, output_dim),
-            nn.Sigmoid(),  # output is bits in [0, 1]
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -71,16 +44,11 @@ class RoundPredictor(nn.Module):
 
 
 class RoundVAE(nn.Module):
-    """
-    VAE that encodes ΔR_r into a latent space and decodes to ΔR_{r+1}.
-    The latent space captures the "essence" of the differential at each round.
-    """
 
     def __init__(self, input_dim, output_dim, latent_dim=16, hidden=256):
         super().__init__()
         self.latent_dim = latent_dim
 
-        # Encoder: ΔR_r → (μ, log σ²)
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, hidden),
             nn.BatchNorm1d(hidden),
@@ -92,7 +60,6 @@ class RoundVAE(nn.Module):
         self.fc_mu = nn.Linear(hidden, latent_dim)
         self.fc_logvar = nn.Linear(hidden, latent_dim)
 
-        # Decoder: z → ΔR_{r+1}
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, hidden),
             nn.BatchNorm1d(hidden),
@@ -123,24 +90,17 @@ class RoundVAE(nn.Module):
         return recon, mu, logvar
 
     def get_latent(self, x):
-        """Get latent representation (mean) without sampling."""
         mu, _ = self.encode(x)
         return mu
 
 
 def vae_loss(recon, target, mu, logvar, beta=0.1):
-    """VAE loss = reconstruction (BCE) + β * KL divergence."""
     bce = nn.functional.binary_cross_entropy(recon, target, reduction='sum')
     kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return bce + beta * kld
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Data Generation
-# ═══════════════════════════════════════════════════════════════════
-
 def generate_differential_traces(cipher_name, cipher, n_rounds, n_samples):
-    """Generate XOR-difference traces for differential pairs."""
     key = cipher.random_key()
     delta_p = cipher.get_default_delta_p()
     factory = RepresentationFactory(block_size=cipher.block_size)
@@ -155,11 +115,10 @@ def generate_differential_traces(cipher_name, cipher, n_rounds, n_samples):
         diff = factory.get_representation('R2_xor_diff', trace1[r], trace2[r])
         traces.append(diff)
 
-    return np.stack(traces, axis=1)  # (n_samples, n_rounds, block_size)
+    return np.stack(traces, axis=1)
 
 
 def generate_random_traces(cipher_name, cipher, n_rounds, n_samples):
-    """Generate XOR-difference traces for independent random pairs."""
     key = cipher.random_key()
     factory = RepresentationFactory(block_size=cipher.block_size)
 
@@ -176,12 +135,7 @@ def generate_random_traces(cipher_name, cipher, n_rounds, n_samples):
     return np.stack(traces, axis=1)
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Training Utilities
-# ═══════════════════════════════════════════════════════════════════
-
 def train_predictor(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3):
-    """Train a round predictor (MLP) and return final MSE."""
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
@@ -207,7 +161,6 @@ def train_predictor(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3
         if (epoch + 1) % 10 == 0 or epoch == 0:
             print(f"      epoch {epoch+1}/{n_epochs} loss={total_loss/n_total:.6f}", flush=True)
 
-    # Final evaluation
     model.eval()
     with torch.no_grad():
         all_pred = model(X_in_t.to(device))
@@ -217,7 +170,6 @@ def train_predictor(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3
 
 
 def train_vae(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3):
-    """Train a VAE and return final reconstruction MSE and the model."""
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -242,7 +194,6 @@ def train_vae(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3):
         if (epoch + 1) % 10 == 0 or epoch == 0:
             print(f"      VAE epoch {epoch+1}/{n_epochs} loss={total_loss/n_total:.4f}", flush=True)
 
-    # Final MSE
     model.eval()
     with torch.no_grad():
         all_in = X_in_t.to(device)
@@ -253,18 +204,12 @@ def train_vae(model, X_in, X_target, n_epochs, batch_size, device, lr=1e-3):
     return mse, model
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Main Experiment
-# ═══════════════════════════════════════════════════════════════════
-
 def single_run(seed, args):
-    """One seed: compare Markov vs Memory predictors across rounds."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
     block_size = cipher.block_size
 
-    # Generate traces
     diff_traces = generate_differential_traces(
         args.cipher, cipher, args.rounds, args.samples
     )
@@ -279,29 +224,22 @@ def single_run(seed, args):
     print(f"    {'─' * 46}")
 
     for r in range(1, args.rounds - 1):
-        # ─── Prepare data ─────────────────────────────────────────
-        # Both models get 64-dim input for a controlled comparison:
-        # Markov: [ΔR_r, ΔR_r] (duplicated — no history info)
         X_markov = np.concatenate([
             diff_traces[:n_train, r, :],
             diff_traces[:n_train, r, :]
         ], axis=1)
-        # Memory: [ΔR_{r-1}, ΔR_r] (actual history)
         X_memory = np.concatenate([
             diff_traces[:n_train, r - 1, :],
             diff_traces[:n_train, r, :]
         ], axis=1)
-        # Target: ΔR_{r+1}
         Y_target = diff_traces[:n_train, r + 1, :]
 
-        # ─── Train Markov predictor (same architecture as Memory) ─
         model_a = RoundPredictor(2 * block_size, block_size, hidden=256)
         mse_a = train_predictor(
             model_a, X_markov, Y_target,
             n_epochs=args.pred_epochs, batch_size=args.batch_size, device=device
         )
 
-        # ─── Train Memory predictor ───────────────────────────────
         model_b = RoundPredictor(2 * block_size, block_size, hidden=256)
         mse_b = train_predictor(
             model_b, X_memory, Y_target,
@@ -314,11 +252,9 @@ def single_run(seed, args):
 
         print(f"    r={r}→{r+1}   {mse_a:<14.6f} {mse_b:<14.6f} {ratio:>8.4f}")
 
-    # ─── VAE Latent Space Analysis ────────────────────────────────
     print(f"\n    Training VAE for latent space visualization...")
 
     vae = RoundVAE(block_size, block_size, latent_dim=args.latent_dim, hidden=256)
-    # Train VAE on round 1→2 (where signal is strongest)
     X_vae_in = diff_traces[:n_train, 0, :]
     X_vae_target = diff_traces[:n_train, 1, :]
     vae_mse, vae_model = train_vae(
@@ -327,7 +263,6 @@ def single_run(seed, args):
     )
     results['vae_mse'] = float(vae_mse)
 
-    # Collect latent representations at each round for both cipher and random
     latent_data = {}
     vae_model.eval()
     n_vis = min(5000, args.samples)
@@ -347,11 +282,8 @@ def single_run(seed, args):
 
 
 def plot_results(all_results, args, output_dir):
-    """Create publication plots."""
-    # ─── Plot 1: Markov vs Memory MSE ─────────────────────────────
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Average across seeds
     rounds = sorted([int(k) for k in all_results[0]['markov_mse'].keys()])
     markov_means = []
     memory_means = []
@@ -366,7 +298,6 @@ def plot_results(all_results, args, output_dir):
 
     x_labels = [f'{r}→{r+1}' for r in rounds]
 
-    # Bar chart comparing MSE
     x_pos = np.arange(len(rounds))
     width = 0.35
     bars1 = axes[0].bar(x_pos - width/2, markov_means, width,
@@ -381,7 +312,6 @@ def plot_results(all_results, args, output_dir):
     axes[0].legend()
     axes[0].grid(True, alpha=0.3, axis='y')
 
-    # Ratio plot
     axes[1].plot(rounds, ratios, 'go-', linewidth=2, markersize=8)
     axes[1].axhline(y=1.0, color='r', linestyle='--', alpha=0.5, label='No improvement')
     axes[1].set_xlabel('Source Round')
@@ -395,7 +325,6 @@ def plot_results(all_results, args, output_dir):
     plt.savefig(output_dir / f'e16_{args.cipher}_prediction.png', dpi=300)
     plt.close()
 
-    # ─── Plot 2: Latent Space Visualization (PCA) ─────────────────
     latent_data = all_results[0].get('_latent_data', {})
     if latent_data:
         n_rounds_to_show = min(6, len(latent_data))
@@ -410,7 +339,6 @@ def plot_results(all_results, args, output_dir):
             cipher_z = latent_data[r]['cipher']
             random_z = latent_data[r]['random']
 
-            # PCA to 2D
             all_z = np.concatenate([cipher_z, random_z], axis=0)
             pca = PCA(n_components=2)
             all_2d = pca.fit_transform(all_z)
@@ -466,7 +394,6 @@ def main():
         all_results.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate prediction results
     rounds = sorted([int(k) for k in all_results[0]['markov_mse'].keys()])
     agg = {}
     for r in rounds:
@@ -482,7 +409,6 @@ def main():
             'ratio_std': float(np.std(ratio_vals)),
         }
 
-    # Print summary
     print(f"\n{'═' * 65}")
     print(f"  {'Transition':<12} {'Markov MSE':<18} {'Memory MSE':<18} {'Ratio':>8}")
     print(f"{'─' * 65}")
@@ -494,7 +420,6 @@ def main():
               f"{a['ratio_mean']:>8.4f}")
     print(f"{'═' * 65}")
 
-    # Interpretation
     avg_ratio = np.mean([agg[str(r)]['ratio_mean'] for r in rounds])
     if avg_ratio < 0.95:
         print(f"\n  ⚡ Memory model achieves {(1-avg_ratio)*100:.1f}% lower MSE on average.")
@@ -503,7 +428,6 @@ def main():
         print(f"\n  ✓ Memory model offers negligible improvement (ratio={avg_ratio:.4f}).")
         print(f"     → Consistent with Markov assumption.")
 
-    # Save (remove non-serializable latent data from JSON)
     save_data = {
         'round_predictions': agg,
         'vae_mse_values': [float(r.get('vae_mse', 0)) for r in all_results],
@@ -512,7 +436,6 @@ def main():
     }
     save_results(save_data, str(output_dir), f'e16_{args.cipher}_results.json')
 
-    # Plot
     plot_results(all_results, args, output_dir)
 
     print(f"\n✓ Results and plots saved to {output_dir}")

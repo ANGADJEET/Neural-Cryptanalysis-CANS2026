@@ -1,21 +1,3 @@
-#!/usr/bin/env python
-"""
-E20: Multi-Ciphertext Pair Distinguisher
-
-Instead of feeding 1 ciphertext pair to the distinguisher, feed N pairs
-encrypted under the same key. Plot accuracy vs N.
-
-This tests whether statistical aggregation over multiple pairs can
-push the distinguisher boundary to higher rounds — directly comparable
-to Papers 3 & 5 from the literature (2025).
-
-Key insight: with N pairs, the model has N independent samples of the
-output distribution, enabling it to detect weaker statistical biases.
-
-Usage:
-    python experiments/exp20_multi_pair.py --cipher speck32 --n-seeds 3
-    python experiments/exp20_multi_pair.py --cipher speck32 --pair-counts 1 2 4 8 16
-"""
 
 import argparse
 import sys
@@ -38,24 +20,11 @@ from experiments.experiment_utils import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Multi-Pair Distinguisher Model
-# ═══════════════════════════════════════════════════════════════════
-
 class MultiPairDistinguisher(nn.Module):
-    """
-    Processes N ciphertext pair differences independently through a
-    shared encoder, then aggregates via attention pooling before
-    classification.
-
-    Input shape: (batch, N_pairs, bit_dim)
-    Output: (batch,) — probability of being a differential pair
-    """
 
     def __init__(self, bit_dim, hidden=256):
         super().__init__()
 
-        # Shared per-pair encoder
         self.pair_encoder = nn.Sequential(
             nn.Linear(bit_dim, hidden),
             nn.BatchNorm1d(hidden),
@@ -65,10 +34,8 @@ class MultiPairDistinguisher(nn.Module):
             nn.ReLU(),
         )
 
-        # Attention pooling over pairs
         self.attn_score = nn.Linear(hidden, 1)
 
-        # Classifier on pooled representation
         self.classifier = nn.Sequential(
             nn.Linear(hidden, hidden),
             nn.BatchNorm1d(hidden),
@@ -78,37 +45,21 @@ class MultiPairDistinguisher(nn.Module):
         )
 
     def forward(self, x):
-        # x shape: (batch, n_pairs, bit_dim)
         batch_size, n_pairs, bit_dim = x.shape
 
-        # Encode each pair independently
         x_flat = x.view(batch_size * n_pairs, bit_dim)
-        encoded = self.pair_encoder(x_flat)  # (B*N, hidden)
-        encoded = encoded.view(batch_size, n_pairs, -1)  # (B, N, hidden)
+        encoded = self.pair_encoder(x_flat)
+        encoded = encoded.view(batch_size, n_pairs, -1)
 
-        # Attention pooling
-        attn_logits = self.attn_score(encoded).squeeze(-1)  # (B, N)
-        attn_weights = torch.softmax(attn_logits, dim=1)  # (B, N)
-        pooled = (encoded * attn_weights.unsqueeze(-1)).sum(dim=1)  # (B, hidden)
+        attn_logits = self.attn_score(encoded).squeeze(-1)
+        attn_weights = torch.softmax(attn_logits, dim=1)
+        pooled = (encoded * attn_weights.unsqueeze(-1)).sum(dim=1)
 
         return self.classifier(pooled).squeeze(-1)
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Data Generation
-# ═══════════════════════════════════════════════════════════════════
-
 def generate_multi_pair_data(cipher_name, cipher, n_rounds, n_samples,
                              n_pairs, seed=42):
-    """
-    Generate multi-pair dataset.
-
-    For each sample:
-      - Positive: generate n_pairs differential pairs (same key, same Δp)
-      - Negative: generate n_pairs random pairs (same key, random P)
-
-    Returns X: (n_samples, n_pairs, bit_dim), Y: (n_samples,)
-    """
     np.random.seed(seed)
     key = cipher.random_key()
     delta_p = cipher.get_default_delta_p()
@@ -118,7 +69,6 @@ def generate_multi_pair_data(cipher_name, cipher, n_rounds, n_samples,
     X_all = []
     Y_all = []
 
-    # Positive samples (differential pairs)
     for _ in range(half):
         pairs = []
         for _ in range(n_pairs):
@@ -131,7 +81,6 @@ def generate_multi_pair_data(cipher_name, cipher, n_rounds, n_samples,
         X_all.append(np.stack(pairs))
         Y_all.append(1.0)
 
-    # Negative samples (random pairs)
     for _ in range(half):
         pairs = []
         for _ in range(n_pairs):
@@ -144,20 +93,14 @@ def generate_multi_pair_data(cipher_name, cipher, n_rounds, n_samples,
         X_all.append(np.stack(pairs))
         Y_all.append(0.0)
 
-    X = np.stack(X_all)  # (n_samples, n_pairs, bit_dim)
+    X = np.stack(X_all)
     Y = np.array(Y_all)
 
-    # Shuffle
     perm = np.random.permutation(len(Y))
     return X[perm], Y[perm]
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Training
-# ═══════════════════════════════════════════════════════════════════
-
 def train_multi_pair(model, X, Y, n_epochs, batch_size, device, lr=1e-3):
-    """Train multi-pair distinguisher."""
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.BCELoss()
@@ -184,7 +127,6 @@ def train_multi_pair(model, X, Y, n_epochs, batch_size, device, lr=1e-3):
             loss.backward()
             optimizer.step()
 
-        # Validate
         model.eval()
         with torch.no_grad():
             X_val_t = torch.from_numpy(X_val).float().to(device)
@@ -202,10 +144,6 @@ def train_multi_pair(model, X, Y, n_epochs, batch_size, device, lr=1e-3):
 
     return best_acc
 
-
-# ═══════════════════════════════════════════════════════════════════
-#  Experiment
-# ═══════════════════════════════════════════════════════════════════
 
 def single_run(seed, args):
     set_seed(seed)
@@ -244,7 +182,6 @@ def plot_results(all_results, args, output_dir):
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    # Plot 1: Accuracy vs pair count for each round
     colors = plt.cm.viridis(np.linspace(0, 1, len(rounds)))
     for i, r in enumerate(rounds):
         means = []
@@ -265,7 +202,6 @@ def plot_results(all_results, args, output_dir):
     axes[0].set_xscale('log', base=2)
     axes[0].grid(True, alpha=0.3)
 
-    # Plot 2: Accuracy gain from multi-pair (relative to N=1)
     for i, r in enumerate(rounds):
         baseline = np.mean([res[str(r)][str(pair_counts[0])] for res in all_results])
         gains = []
@@ -319,7 +255,6 @@ def main():
         all_results.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Summary
     rounds = sorted([int(k) for k in all_results[0].keys()])
     pair_counts = sorted([int(k) for k in all_results[0][str(rounds[0])].keys()])
 

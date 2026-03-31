@@ -1,10 +1,3 @@
-"""
-Convolutional Neural Network models for neural cryptanalysis.
-
-Includes:
-- Standard CNN for 1D bit sequences
-- Residual CNN for deeper networks
-"""
 
 import torch
 import torch.nn as nn
@@ -12,14 +5,6 @@ from typing import List, Tuple, Optional
 
 
 class CNN(nn.Module):
-    """
-    1D Convolutional Neural Network for cryptanalysis.
-    
-    Designed for bit-level or word-level representations where
-    spatial/sequential structure matters.
-    
-    Best for: R1_raw_pair, R4_bit_sliced representations
-    """
     
     def __init__(
         self,
@@ -31,24 +16,11 @@ class CNN(nn.Module):
         dropout: float = 0.1,
         pool_type: str = 'max'
     ):
-        """
-        Initialize CNN.
-        
-        Args:
-            input_dim: Length of input sequence (e.g., block_size)
-            input_channels: Number of input channels (1 for single, 2 for pairs)
-            conv_filters: Number of filters per conv layer
-            kernel_size: Convolution kernel size
-            fc_layers: Fully connected layer sizes
-            dropout: Dropout probability
-            pool_type: Pooling type ('max' or 'avg')
-        """
         super().__init__()
         
         self.input_dim = input_dim
         self.input_channels = input_channels
         
-        # Build convolutional layers
         conv_layers = []
         in_channels = input_channels
         current_length = input_dim
@@ -60,7 +32,6 @@ class CNN(nn.Module):
                 nn.ReLU(),
             ])
             
-            # Pooling
             if pool_type == 'max':
                 conv_layers.append(nn.MaxPool1d(2))
             else:
@@ -71,10 +42,8 @@ class CNN(nn.Module):
         
         self.conv = nn.Sequential(*conv_layers)
         
-        # Calculate flattened size
         self.flat_size = conv_filters[-1] * current_length
         
-        # Build fully connected layers
         fc = []
         prev_dim = self.flat_size
         
@@ -94,24 +63,13 @@ class CNN(nn.Module):
         self.fc = nn.Sequential(*fc)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass.
-        
-        Args:
-            x: Input of shape (batch, channels, length) or (batch, length)
-            
-        Returns:
-            Output probabilities of shape (batch, 1)
-        """
-        # Add channel dimension if needed
         if x.dim() == 2:
             x = x.unsqueeze(1)
         
-        # Ensure (batch, channels, length) format
         if x.dim() == 3 and x.size(2) > x.size(1):
-            pass  # Already correct
+            pass
         elif x.dim() == 3:
-            x = x.transpose(1, 2)  # (batch, length, channels) -> (batch, channels, length)
+            x = x.transpose(1, 2)
         
         x = self.conv(x)
         x = x.view(x.size(0), -1)
@@ -119,11 +77,6 @@ class CNN(nn.Module):
 
 
 class ResidualCNN(nn.Module):
-    """
-    Residual CNN for deeper networks.
-    
-    Uses skip connections to enable training deeper architectures.
-    """
     
     def __init__(
         self,
@@ -134,27 +87,14 @@ class ResidualCNN(nn.Module):
         fc_layers: List[int] = [128, 64],
         dropout: float = 0.1
     ):
-        """
-        Initialize Residual CNN.
-        
-        Args:
-            input_dim: Input sequence length
-            input_channels: Number of input channels
-            num_blocks: Number of residual blocks
-            base_filters: Base number of filters (doubled each block)
-            fc_layers: FC layer sizes
-            dropout: Dropout rate
-        """
         super().__init__()
         
-        # Input projection
         self.input_conv = nn.Sequential(
             nn.Conv1d(input_channels, base_filters, 3, padding=1),
             nn.BatchNorm1d(base_filters),
             nn.ReLU()
         )
         
-        # Residual blocks with increasing filters
         self.blocks = nn.ModuleList()
         in_filters = base_filters
         current_length = input_dim
@@ -168,10 +108,8 @@ class ResidualCNN(nn.Module):
                 current_length = current_length // 2
             in_filters = out_filters
         
-        # Global pooling
         self.global_pool = nn.AdaptiveAvgPool1d(1)
         
-        # FC layers
         fc = []
         prev_dim = in_filters
         
@@ -191,7 +129,6 @@ class ResidualCNN(nn.Module):
         self.fc = nn.Sequential(*fc)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Add channel dimension if needed
         if x.dim() == 2:
             x = x.unsqueeze(1)
         
@@ -207,7 +144,6 @@ class ResidualCNN(nn.Module):
 
 
 class ResidualConvBlock(nn.Module):
-    """Residual block for CNN."""
     
     def __init__(self, in_channels: int, out_channels: int, downsample: bool = False):
         super().__init__()
@@ -222,7 +158,6 @@ class ResidualConvBlock(nn.Module):
             nn.BatchNorm1d(out_channels)
         )
         
-        # Skip connection
         if in_channels != out_channels or downsample:
             self.skip = nn.Sequential(
                 nn.Conv1d(in_channels, out_channels, 1, stride=stride),
@@ -238,33 +173,14 @@ class ResidualConvBlock(nn.Module):
 
 
 class CNN2D(nn.Module):
-    """
-    2D CNN for bit-sliced representations.
-    
-    Treats the ciphertext pair as a 2D image where:
-    - Height: words
-    - Width: bits per word
-    - Channels: 2 (C and C')
-    
-    Best for: R4_bit_sliced representation
-    """
     
     def __init__(
         self,
-        input_shape: Tuple[int, int, int],  # (channels, height, width)
+        input_shape: Tuple[int, int, int],
         conv_filters: List[int] = [32, 64, 128],
         fc_layers: List[int] = [128, 64],
         dropout: float = 0.1
     ):
-        """
-        Initialize 2D CNN.
-        
-        Args:
-            input_shape: (channels, height, width) of input
-            conv_filters: Filters per conv layer
-            fc_layers: FC layer sizes
-            dropout: Dropout rate
-        """
         super().__init__()
         
         channels, height, width = input_shape

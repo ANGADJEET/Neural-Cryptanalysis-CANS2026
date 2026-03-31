@@ -1,17 +1,8 @@
-#!/usr/bin/env python
-"""
-Script to train a model for neural cryptanalysis.
-
-Usage:
-    python scripts/train_model.py --model mlp --repr R2_xor_diff --data ./data/generated/speck32_r5_delta00400000
-    python scripts/train_model.py --model cnn --repr R1_raw_pair --cipher speck32 --rounds 5
-"""
 
 import argparse
 import sys
 from pathlib import Path
 
-# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
@@ -29,7 +20,6 @@ def parse_args():
         description='Train a neural cryptanalysis model'
     )
     
-    # Data arguments
     parser.add_argument(
         '--data',
         type=str,
@@ -49,7 +39,6 @@ def parse_args():
         help='Number of rounds (used to find default data path)'
     )
     
-    # Model arguments
     parser.add_argument(
         '--model',
         type=str,
@@ -65,7 +54,6 @@ def parse_args():
         help='Input representation'
     )
     
-    # Training arguments
     parser.add_argument(
         '--epochs',
         type=int,
@@ -94,7 +82,6 @@ def parse_args():
         help='Early stopping patience'
     )
     
-    # Logging
     parser.add_argument(
         '--wandb',
         action='store_true',
@@ -115,7 +102,6 @@ def parse_args():
         help='Wandb run name'
     )
     
-    # Output
     parser.add_argument(
         '--save-dir',
         type=str,
@@ -143,19 +129,15 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Set seed
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     
-    # Set device
     device = args.device if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
     
-    # Find data path
     if args.data:
         data_path = args.data
     elif args.cipher and args.rounds:
-        # Default delta_p values
         defaults = {'speck32': 0x00400000, 'simon32': 0x00000001, 'present': 0x00000001}
         delta_p = defaults.get(args.cipher, 0x00000001)
         data_path = f"./data/generated/{args.cipher}_r{args.rounds}_delta{delta_p:08x}"
@@ -165,15 +147,12 @@ def main():
     print(f"Loading data from: {data_path}")
     data = load_dataset(data_path)
     
-    # Get block size from cipher
     block_sizes = {'speck32': 32, 'simon32': 32, 'present': 64}
     if args.cipher:
         block_size = block_sizes[args.cipher]
     else:
-        # Infer from data
-        block_size = 32  # Default
+        block_size = 32
     
-    # Create data loaders
     print(f"Using representation: {args.repr}")
     loaders = get_dataloaders(
         data,
@@ -182,20 +161,16 @@ def main():
         batch_size=args.batch_size
     )
     
-    # Get input dimension
     input_dim = get_input_dim(args.repr, block_size)
     print(f"Input dimension: {input_dim}")
     
-    # Create model
     print(f"Creating model: {args.model}")
     model = get_model(args.model, input_dim=input_dim)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # Create optimizer and scheduler
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     
-    # Create trainer
     config = {
         'cipher': args.cipher,
         'rounds': args.rounds,
@@ -222,14 +197,12 @@ def main():
         save_dir=args.save_dir
     )
     
-    # Train
     print("\nStarting training...")
     history = trainer.train(
         n_epochs=args.epochs,
         early_stopping_patience=args.patience
     )
     
-    # Final evaluation
     print("\nFinal evaluation on test set...")
     test_metrics = evaluate_model(model, loaders['test'], device)
     

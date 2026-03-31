@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E05: Memory Depth Ablation / Markov (Multi-Seed)
-
-Train LSTM with varying sequence lengths from round traces.
-
-Usage:
-    python experiments/exp05_markov_depth.py --cipher speck32 --rounds 7 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -30,17 +21,10 @@ from experiments.experiment_utils import (
 
 
 def generate_trace_data(cipher_name, cipher, n_rounds, delta_p, n_samples):
-    """Generate data with round-by-round traces.
-
-    Positive: (P, P ^ delta_p) encrypted under the same key — has differential structure.
-    Negative: (Q, R) two INDEPENDENT random plaintexts encrypted under the same key —
-              has the same temporal correlation structure as positives but NO differential signal.
-    """
     key = cipher.random_key()
     half = n_samples // 2
     factory = RepresentationFactory(block_size=cipher.block_size)
 
-    # --- Positive samples: differential pair (P, P ^ delta_p) ---
     P = cipher.random_plaintexts(half)
     P_prime = (P ^ delta_p).astype(P.dtype)
     _, trace1 = cipher.encrypt_with_trace(P, n_rounds, key)
@@ -50,11 +34,8 @@ def generate_trace_data(cipher_name, cipher, n_rounds, delta_p, n_samples):
     for r in range(n_rounds):
         diff = factory.get_representation('R2_xor_diff', trace1[r], trace2[r])
         pos_traces.append(diff)
-    pos_traces = np.stack(pos_traces, axis=1)  # (half, n_rounds, block_size)
+    pos_traces = np.stack(pos_traces, axis=1)
 
-    # --- Negative samples: independent random pair (Q, R) through the SAME cipher ---
-    # This ensures temporal correlation structure matches positives,
-    # but there is no differential relationship between Q and R.
     Q = cipher.random_plaintexts(half)
     R = cipher.random_plaintexts(half)
     _, trace_q = cipher.encrypt_with_trace(Q, n_rounds, key)
@@ -64,7 +45,7 @@ def generate_trace_data(cipher_name, cipher, n_rounds, delta_p, n_samples):
     for r in range(n_rounds):
         diff = factory.get_representation('R2_xor_diff', trace_q[r], trace_r[r])
         neg_traces.append(diff)
-    neg_traces = np.stack(neg_traces, axis=1)  # (half, n_rounds, block_size)
+    neg_traces = np.stack(neg_traces, axis=1)
 
     X = np.concatenate([pos_traces, neg_traces], axis=0)
     Y = np.concatenate([np.ones(half), np.zeros(half)])
@@ -73,7 +54,6 @@ def generate_trace_data(cipher_name, cipher, n_rounds, delta_p, n_samples):
 
 
 def single_run(seed, args):
-    """One seed: accuracy at each depth."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -99,7 +79,6 @@ def single_run(seed, args):
         depth = min(depth, args.rounds)
         print(f"    Depth {depth}...", end=' ')
 
-        # Take only last `depth` rounds
         X_tr = torch.from_numpy(X_train[:, -depth:, :]).float()
         X_vl = torch.from_numpy(X_val[:, -depth:, :]).float()
         X_ts = torch.from_numpy(X_test[:, -depth:, :]).float()
@@ -154,7 +133,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate
     depths = [min(d, args.rounds) for d in args.depths]
     agg = {}
     for d in depths:
@@ -166,7 +144,6 @@ def main():
             'values': [float(v) for v in vals],
         }
 
-    # Plot
     fig, ax = plt.subplots(figsize=(8, 5))
     x = sorted([int(k) for k in agg.keys()])
     means = [agg[str(d)]['mean'] for d in x]

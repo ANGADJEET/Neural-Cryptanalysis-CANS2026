@@ -1,10 +1,4 @@
-"""
-Experiments module.
-Individual experiment scripts are in the experiments/ directory.
-All experiments support multi-seed runs with --n-seeds flag.
-"""
 
-# Experiment registry
 EXPERIMENTS = {
     'E01': 'exp01_baseline.py',
     'E02': 'exp02_representation.py',

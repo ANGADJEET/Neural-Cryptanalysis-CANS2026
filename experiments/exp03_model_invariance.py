@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-"""
-E03: Model Invariance Test (Multi-Seed)
-
-Train a baseline model, then evaluate on randomly permuted input bits.
-Tests whether the distinguisher exploits bit-positional structure.
-
-Usage:
-    python experiments/exp03_model_invariance.py --cipher speck32 --rounds 5 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -32,7 +22,6 @@ from experiments.experiment_utils import (
 
 
 def single_run(seed, args):
-    """One seed: train baseline, evaluate on permuted inputs."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -64,7 +53,6 @@ def single_run(seed, args):
     baseline_acc = float(baseline_metrics['accuracy'])
     print(f"    Baseline accuracy: {baseline_acc:.4f}")
 
-    # Test with random permutations
     model.eval()
     perm_accs = []
     for t in range(args.n_trials):
@@ -119,7 +107,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate
     bl_vals = [r['baseline_accuracy'] for r in all_runs]
     pm_vals = [r['permuted_accuracy_mean'] for r in all_runs]
     dr_vals = [r['accuracy_drop'] for r in all_runs]
@@ -130,7 +117,6 @@ def main():
         'drop': {'mean': float(np.mean(dr_vals)), 'std': float(np.std(dr_vals)), 'values': dr_vals},
     }
 
-    # Plot
     fig, ax = plt.subplots(figsize=(8, 5))
     x = ['Baseline', 'Permuted']
     means = [aggregated['baseline']['mean'], aggregated['permuted']['mean']]

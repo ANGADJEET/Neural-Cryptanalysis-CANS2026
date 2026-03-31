@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-"""
-E15: Computational Cost Benchmarking
-
-Profile all model architectures: parameter count, training time,
-inference throughput. Outputs a LaTeX-ready comparison table.
-
-Usage:
-    python experiments/exp15_computational_cost.py --cipher speck32 --rounds 5
-"""
 
 import argparse
 import sys
@@ -35,7 +25,6 @@ ALL_MODELS = ['gohr_mlp', 'mlp', 'cnn', 'residual_cnn', 'lstm', 'gru']
 
 
 def benchmark_model(model_name, cipher, args, device):
-    """Benchmark a single model architecture."""
     gen = CipherDataGenerator(
         cipher=args.cipher, n_rounds=args.rounds,
         delta_p=cipher.get_default_delta_p()
@@ -83,17 +72,14 @@ def benchmark_model(model_name, cipher, args, device):
         val_loader = DataLoader(val_ds, batch_size=args.batch_size)
         test_loader = DataLoader(test_ds, batch_size=args.batch_size)
 
-    # Training time
     trainer = Trainer(model=model, train_loader=train_loader,
                       val_loader=val_loader, device=device, use_wandb=False)
     t0 = _time.time()
     trainer.train(n_epochs=args.epochs, early_stopping_patience=5, save_best=False)
     train_time = _time.time() - t0
 
-    # Evaluation
     metrics = evaluate_model(model, test_loader, device)
 
-    # Inference throughput (samples/sec)
     model.eval()
     n_infer = 0
     t0 = _time.time()
@@ -105,8 +91,7 @@ def benchmark_model(model_name, cipher, args, device):
     infer_time = _time.time() - t0
     throughput = n_infer / max(infer_time, 1e-6)
 
-    # Memory estimate (MB)
-    mem_mb = n_params * 4 / (1024 * 1024)  # float32
+    mem_mb = n_params * 4 / (1024 * 1024)
 
     return {
         'n_params': n_params,
@@ -151,7 +136,6 @@ def main():
             print(f"    ERROR: {e}")
             results[model_name] = {'error': str(e)}
 
-    # Print table
     print(f"\n{'═' * 80}")
     print(f"  {'Model':<12} {'Params':>10} {'Acc':>8} "
           f"{'Train(s)':>10} {'Infer(s/s)':>12} {'Size(MB)':>10}")
@@ -166,7 +150,6 @@ def main():
               f"{r['model_size_mb']:>10.3f}")
     print(f"{'═' * 80}")
 
-    # LaTeX table
     latex_lines = [
         r"\begin{table}[h]",
         r"\centering",

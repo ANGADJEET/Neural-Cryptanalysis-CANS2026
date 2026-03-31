@@ -1,7 +1,3 @@
-"""
-Cipher implementations for neural differential cryptanalysis.
-Supports SPECK32/64, SIMON32/64, and PRESENT.
-"""
 
 from .base import BaseCipher
 from .speck32 import Speck32
@@ -19,7 +15,6 @@ __all__ = [
 
 
 def get_cipher(name: str) -> BaseCipher:
-    """Factory function to get cipher by name."""
     ciphers = {
         'speck32': Speck32,
         'simon32': Simon32,

@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-"""
-E02: Representation Analysis (Multi-Seed)
-
-Compare all input representations on the same cipher and round count.
-
-Usage:
-    python experiments/exp02_representation.py --cipher speck32 --rounds 5
-    python experiments/exp02_representation.py --cipher speck32 --rounds 5 --n-seeds 5
-"""
 
 import argparse
 import sys
@@ -37,7 +27,6 @@ REPRESENTATIONS = [
 
 
 def single_run(seed, args):
-    """One seed: accuracy for each representation."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -103,7 +92,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate
     aggregated = {}
     for repr_name in REPRESENTATIONS:
         vals = [run[repr_name] for run in all_runs if repr_name in run]
@@ -113,7 +101,6 @@ def main():
             'values': [float(v) for v in vals],
         }
 
-    # Plot with error bars
     fig, ax = plt.subplots(figsize=(10, 6))
     names = list(aggregated.keys())
     means = [aggregated[n]['mean'] for n in names]
@@ -138,7 +125,6 @@ def main():
     save_results(results, str(output_dir),
                  f'e02_{args.cipher}_r{args.rounds}_results.json')
 
-    # Summary
     print(f"\n{'═' * 55}")
     for n in names:
         a = aggregated[n]

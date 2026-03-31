@@ -1,6 +1,3 @@
-"""
-Training utilities for neural cryptanalysis.
-"""
 
 from .trainer import Trainer, train_model
 from .callbacks import EarlyStopping, ModelCheckpoint, WandbCallback

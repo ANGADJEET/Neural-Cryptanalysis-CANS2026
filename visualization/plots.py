@@ -1,8 +1,3 @@
-"""
-Plotting functions for neural cryptanalysis experiments.
-
-Generates publication-quality figures for the paper.
-"""
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -11,7 +6,6 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
-# Set style for publication
 plt.style.use('seaborn-v0_8-whitegrid')
 plt.rcParams.update({
     'font.size': 12,
@@ -34,19 +28,6 @@ def plot_accuracy_vs_rounds(
     show_advantage: bool = True,
     threshold: float = 0.51
 ) -> plt.Figure:
-    """
-    Plot accuracy/advantage vs round count for multiple ciphers.
-    
-    Args:
-        results: {cipher_name: {n_rounds: accuracy}}
-        title: Plot title
-        save_path: Path to save figure
-        show_advantage: Plot advantage instead of accuracy
-        threshold: Threshold line for effective distinguishing
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(10, 6))
     
     colors = ['#2ecc71', '#3498db', '#e74c3c', '#9b59b6', '#f39c12']
@@ -72,7 +53,6 @@ def plot_accuracy_vs_rounds(
                 linewidth=2,
                 label=cipher.upper())
     
-    # Threshold line
     ax.axhline(y=thresh, color='gray', linestyle='--', alpha=0.5, 
                label=f'Threshold ({thresh:.2f})')
     
@@ -99,24 +79,11 @@ def plot_representation_comparison(
     metric: str = 'accuracy',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Bar chart comparing representations.
-    
-    Args:
-        results: {representation_name: metric_value}
-        title: Plot title
-        metric: Metric name for y-axis
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(12, 6))
     
     names = list(results.keys())
     values = list(results.values())
     
-    # Color by performance
     colors = plt.cm.RdYlGn(np.linspace(0.2, 0.8, len(values)))
     sorted_indices = np.argsort(values)
     bar_colors = [colors[np.where(sorted_indices == i)[0][0]] for i in range(len(values))]
@@ -128,7 +95,6 @@ def plot_representation_comparison(
     ax.set_ylabel(metric.replace('_', ' ').title())
     ax.set_title(title)
     
-    # Add value labels
     for bar, val in zip(bars, values):
         ax.annotate(f'{val:.3f}',
                    xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
@@ -148,24 +114,11 @@ def plot_signal_decay_heatmap(
     round_labels: Optional[List[str]] = None,
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Heatmap showing MI between round pairs.
-    
-    Args:
-        mi_matrix: (n_rounds, n_rounds) MI values
-        title: Plot title
-        round_labels: Labels for rounds
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(10, 8))
     
     if round_labels is None:
         round_labels = [f'R{i+1}' for i in range(mi_matrix.shape[0])]
     
-    # Create mask for upper triangle
     mask = np.triu(np.ones_like(mi_matrix, dtype=bool), k=1)
     
     sns.heatmap(
@@ -195,22 +148,10 @@ def plot_training_curves(
     title: str = 'Training Progress',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot training and validation curves.
-    
-    Args:
-        history: {metric_name: [values]}
-        title: Plot title
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
     epochs = range(1, len(history.get('train_loss', [])) + 1)
     
-    # Loss
     ax1 = axes[0]
     if 'train_loss' in history:
         ax1.plot(epochs, history['train_loss'], 'b-', label='Train', linewidth=2)
@@ -222,7 +163,6 @@ def plot_training_curves(
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    # Accuracy
     ax2 = axes[1]
     if 'train_acc' in history:
         ax2.plot(epochs, history['train_acc'], 'b-', label='Train', linewidth=2)
@@ -250,18 +190,6 @@ def plot_confusion_matrix(
     title: str = 'Confusion Matrix',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot confusion matrix.
-    
-    Args:
-        cm: 2x2 confusion matrix
-        labels: Class labels
-        title: Plot title
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(8, 6))
     
     sns.heatmap(
@@ -291,19 +219,6 @@ def plot_roc_curve(
     title: str = 'ROC Curve',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot ROC curve.
-    
-    Args:
-        fpr: False positive rates
-        tpr: True positive rates
-        auc: Area under curve
-        title: Plot title
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(8, 8))
     
     ax.plot(fpr, tpr, 'b-', linewidth=2, label=f'ROC (AUC = {auc:.4f})')
@@ -328,17 +243,6 @@ def plot_memory_depth(
     title: str = 'Memory Depth vs Accuracy',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot accuracy vs history depth for Markov analysis.
-    
-    Args:
-        results: {depth: accuracy}
-        title: Plot title
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(10, 6))
     
     depths = sorted(results.keys())
@@ -346,7 +250,6 @@ def plot_memory_depth(
     
     ax.plot(depths, accs, 'o-', markersize=10, linewidth=2, color='#3498db')
     
-    # Highlight optimal depth
     best_depth = depths[np.argmax(accs)]
     best_acc = max(accs)
     ax.scatter([best_depth], [best_acc], s=200, c='red', zorder=5, 
@@ -369,20 +272,6 @@ def plot_markov_gap(
     title: str = 'Markov Gap vs Round',
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot Markov gap analysis results.
-    
-    Markov gap = |I(ΔR_r; Y | full history) - I(ΔR_r; Y | previous round)|
-    Small gap = Markov assumption holds
-    
-    Args:
-        markov_gaps: {round: gap_value}
-        title: Plot title
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(10, 6))
     
     rounds = sorted(markov_gaps.keys())
@@ -390,7 +279,6 @@ def plot_markov_gap(
     
     ax.bar(rounds, gaps, color='#2ecc71', edgecolor='black', alpha=0.7)
     
-    # Threshold line
     ax.axhline(y=0.01, color='red', linestyle='--', alpha=0.7, 
                label='Markov threshold (0.01)')
     
@@ -412,24 +300,11 @@ def plot_saliency_map(
     word_size: int = 16,
     save_path: Optional[str] = None
 ) -> plt.Figure:
-    """
-    Plot gradient-based saliency map showing important bits.
-    
-    Args:
-        saliency: (block_size,) saliency values
-        title: Plot title
-        word_size: Word size for grouping
-        save_path: Path to save
-        
-    Returns:
-        matplotlib Figure
-    """
     fig, ax = plt.subplots(figsize=(12, 4))
     
     block_size = len(saliency)
     n_words = block_size // word_size
     
-    # Reshape for visualization
     saliency_2d = saliency.reshape(n_words, word_size)
     
     im = ax.imshow(saliency_2d, cmap='hot', aspect='auto')
@@ -440,7 +315,6 @@ def plot_saliency_map(
     
     plt.colorbar(im, ax=ax, label='Saliency')
     
-    # Add bit labels
     ax.set_xticks(range(0, word_size, 4))
     ax.set_xticklabels(range(0, word_size, 4))
     ax.set_yticks(range(n_words))

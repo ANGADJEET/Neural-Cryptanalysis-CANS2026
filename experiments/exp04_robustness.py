@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""
-E04: Robustness Testing (Multi-Seed)
-
-Measure model robustness under Gaussian noise, bit flips, and key mismatch.
-
-Usage:
-    python experiments/exp04_robustness.py --cipher speck32 --rounds 5 --n-seeds 3
-"""
 
 import argparse
 import sys
@@ -31,7 +22,6 @@ from experiments.experiment_utils import (
 
 
 def eval_with_noise(model, test_loader, device, noise_std):
-    """Evaluate with additive Gaussian noise."""
     model.eval()
     correct = total = 0
     with torch.no_grad():
@@ -46,14 +36,13 @@ def eval_with_noise(model, test_loader, device, noise_std):
 
 
 def eval_with_bitflip(model, test_loader, device, flip_prob):
-    """Evaluate with random bit flips."""
     model.eval()
     correct = total = 0
     with torch.no_grad():
         for X, Y in test_loader:
             X = X.to(device)
             mask = (torch.rand_like(X) < flip_prob).float()
-            X = torch.abs(X - mask)  # flip bits (0→1, 1→0)
+            X = torch.abs(X - mask)
             Y = Y.to(device)
             out = model(X).squeeze()
             pred = (out > 0.5).float()
@@ -63,7 +52,6 @@ def eval_with_bitflip(model, test_loader, device, flip_prob):
 
 
 def single_run(seed, args):
-    """One seed of the robustness experiment."""
     set_seed(seed)
     cipher = get_cipher(args.cipher)
     device = get_device(args)
@@ -94,21 +82,18 @@ def single_run(seed, args):
     baseline = evaluate_model(model, test_loader, device)
     baseline_acc = float(baseline['accuracy'])
 
-    # Gaussian noise sweep
     noise_levels = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
     noise_results = {}
     for sigma in noise_levels:
         acc = eval_with_noise(model, test_loader, device, sigma)
         noise_results[str(sigma)] = acc
 
-    # Bit flip sweep
     flip_probs = [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
     flip_results = {}
     for p in flip_probs:
         acc = eval_with_bitflip(model, test_loader, device, p)
         flip_results[str(p)] = acc
 
-    # Key mismatch
     mismatch_gen = CipherDataGenerator(
         cipher=args.cipher, n_rounds=args.rounds,
         delta_p=cipher.get_default_delta_p()
@@ -150,7 +135,6 @@ def main():
         all_runs.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Aggregate noise curves
     noise_levels = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
     flip_probs = [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
 
@@ -161,7 +145,6 @@ def main():
 
     bl_mean = float(np.mean([r['baseline_accuracy'] for r in all_runs]))
 
-    # Plot
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
     axes[0].errorbar(noise_levels, noise_means, yerr=noise_stds,

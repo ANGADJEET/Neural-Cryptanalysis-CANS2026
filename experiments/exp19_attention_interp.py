@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-"""
-E19: Attention-Based Interpretability
-
-Train distinguishers WITH attention mechanism, then extract attention
-weights to visualize which ciphertext BITS the model focuses on at
-each round. This addresses the #1 cited limitation in the field:
-"black-box interpretability of neural distinguishers."
-
-Produces:
-  - Heatmap: bit importance × round (which bits matter where)
-  - Accuracy comparison: MLP vs Attention-MLP
-  - Entropy of attention weights across rounds (does the model
-    focus on fewer bits at easier rounds?)
-
-Usage:
-    python experiments/exp19_attention_interp.py --cipher speck32 --n-seeds 3
-    python experiments/exp19_attention_interp.py --cipher speck32 --rounds 3 4 5 6 7 8
-"""
 
 import argparse
 import sys
@@ -43,33 +24,19 @@ from experiments.experiment_utils import (
 )
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Attention-Enhanced MLP
-# ═══════════════════════════════════════════════════════════════════
-
 class AttentionMLP(nn.Module):
-    """
-    Gohr-style MLP with a learned attention layer over input bits.
-
-    The attention layer produces per-bit importance weights,
-    allowing us to inspect which bits the model relies on.
-    """
 
     def __init__(self, input_dim, hidden=256, n_heads=4):
         super().__init__()
         self.input_dim = input_dim
         self.n_heads = n_heads
 
-        # Multi-head attention over input bits
-        # Each head learns a different attention pattern
         self.attn_queries = nn.Parameter(torch.randn(n_heads, hidden // n_heads))
-        self.attn_keys = nn.Linear(1, hidden // n_heads)  # per-bit key
-        self.attn_values = nn.Linear(1, hidden // n_heads)  # per-bit value
+        self.attn_keys = nn.Linear(1, hidden // n_heads)
+        self.attn_values = nn.Linear(1, hidden // n_heads)
 
-        # Position embedding for bit positions
         self.pos_embed = nn.Parameter(torch.randn(input_dim, hidden // n_heads))
 
-        # Simple self-attention alternative: learned bit weights
         self.bit_attention = nn.Sequential(
             nn.Linear(input_dim, input_dim),
             nn.Tanh(),
@@ -77,7 +44,6 @@ class AttentionMLP(nn.Module):
             nn.Softmax(dim=-1),
         )
 
-        # Main classifier
         self.classifier = nn.Sequential(
             nn.Linear(input_dim, hidden),
             nn.BatchNorm1d(hidden),
@@ -95,27 +61,18 @@ class AttentionMLP(nn.Module):
         self._attention_weights = None
 
     def forward(self, x):
-        # Compute attention weights over input bits
-        attn = self.bit_attention(x)  # (batch, input_dim)
+        attn = self.bit_attention(x)
         self._attention_weights = attn.detach()
 
-        # Apply attention (element-wise reweighting)
         x_attended = x * attn
 
-        # Classify
         return self.classifier(x_attended).squeeze(-1)
 
     def get_attention_weights(self):
-        """Return the last computed attention weights."""
         return self._attention_weights
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  Experiment
-# ═══════════════════════════════════════════════════════════════════
-
 def train_and_extract(seed, cipher_name, n_rounds, args):
-    """Train attention model and extract bit importance for one round count."""
     set_seed(seed)
     cipher = get_cipher(cipher_name)
     device = get_device(args)
@@ -135,7 +92,6 @@ def train_and_extract(seed, cipher_name, n_rounds, args):
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size)
 
-    # ── Train baseline MLP ─────────────────────────────────────
     baseline_model = get_model('gohr_mlp', input_dim=input_dim)
     baseline_trainer = Trainer(
         model=baseline_model, train_loader=train_loader,
@@ -144,7 +100,6 @@ def train_and_extract(seed, cipher_name, n_rounds, args):
     baseline_trainer.train(n_epochs=args.epochs, early_stopping_patience=5, save_best=False)
     baseline_metrics = evaluate_model(baseline_model, val_loader, device)
 
-    # ── Train attention MLP ────────────────────────────────────
     attn_model = AttentionMLP(input_dim, hidden=256)
     attn_trainer = Trainer(
         model=attn_model, train_loader=train_loader,
@@ -153,7 +108,6 @@ def train_and_extract(seed, cipher_name, n_rounds, args):
     attn_trainer.train(n_epochs=args.epochs, early_stopping_patience=5, save_best=False)
     attn_metrics = evaluate_model(attn_model, val_loader, device)
 
-    # ── Extract attention weights ──────────────────────────────
     attn_model.eval()
     all_weights = []
     with torch.no_grad():
@@ -164,7 +118,6 @@ def train_and_extract(seed, cipher_name, n_rounds, args):
             all_weights.append(weights.cpu().numpy())
 
     mean_weights = np.concatenate(all_weights, axis=0).mean(axis=0)
-    # Normalize to [0, 1]
     mean_weights = mean_weights / (mean_weights.max() + 1e-8)
 
     print(f"      {n_rounds}r: baseline={baseline_metrics['accuracy']:.4f}, "
@@ -194,7 +147,6 @@ def plot_results(all_results, args, output_dir):
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-    # Plot 1: Bit importance heatmap (averaged across seeds)
     heatmap = np.zeros((len(rounds), n_bits))
     for i, r in enumerate(rounds):
         for res in all_results:
@@ -209,7 +161,6 @@ def plot_results(all_results, args, output_dir):
     axes[0].set_title(f'Bit Importance Heatmap — {args.cipher.upper()}')
     plt.colorbar(im, ax=axes[0], label='Attention Weight')
 
-    # Plot 2: Accuracy comparison
     baseline_accs = {r: np.mean([res[str(r)]['baseline_accuracy'] for res in all_results])
                      for r in rounds}
     attn_accs = {r: np.mean([res[str(r)]['attention_accuracy'] for res in all_results])
@@ -226,7 +177,6 @@ def plot_results(all_results, args, output_dir):
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
-    # Plot 3: Attention entropy across rounds
     entropies = {r: np.mean([res[str(r)]['attention_entropy'] for res in all_results])
                  for r in rounds}
     entropy_stds = {r: np.std([res[str(r)]['attention_entropy'] for res in all_results])
@@ -274,7 +224,6 @@ def main():
         all_results.append(result)
         print(f"└─ Done ─────────────────────────────────────┘")
 
-    # Save
     save_results(
         {'runs': all_results, '_seeds': seeds},
         str(output_dir), f'e19_{args.cipher}_results.json'

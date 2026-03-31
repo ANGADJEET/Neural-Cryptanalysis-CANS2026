@@ -1,7 +1,3 @@
-"""
-E02 Supplement: Detailed evaluation of R6 (Joint P-C), R7 (Sequential), and R9 (Masked) representations.
-Tests R9 under three noise settings, R6 with plaintext access, and R7 with intermediate round traces.
-"""
 import sys, json, os
 sys.path.insert(0, '.')
 import numpy as np
@@ -24,7 +20,6 @@ def main():
     cipher = get_cipher('speck32')
     results = {}
 
-    # Test R9 (Masked) at round 5
     print('Testing R9_masked...')
     for noise_setting in ['mask_only', 'noise_only', 'both']:
         seed_accs = []
@@ -80,7 +75,6 @@ def main():
             'values': seed_accs,
         }
 
-    # Test R6 (Joint P-C) at round 5 — needs plaintext in data
     print('Testing R6_joint_pc...')
     seed_accs_r6 = []
     for seed in [42, 43, 44, 45, 46]:
@@ -130,9 +124,6 @@ def main():
         'values': seed_accs_r6,
     }
 
-    # Test R7 (Sequential / round-wise differences) at round 5
-    # R7 requires white-box intermediate states via include_trace=True
-    # Output shape: (N, n_rounds, block_size) — use LSTM for sequential data
     print('Testing R7_sequential...')
     seed_accs_r7 = []
     for seed in [42, 43, 44, 45, 46]:
@@ -142,10 +133,6 @@ def main():
         val_data = gen.generate_balanced_dataset(50000, include_trace=True)
         test_data = gen.generate_balanced_dataset(50000, include_trace=True)
 
-        # CRITICAL FIX for R7 Target Leakage:
-        # The generator fills the negative class (label=0) intermediate traces with all zeros natively.
-        # This allows the neural network to trivially achieve 100% accuracy by just looking for zeros.
-        # We must replace those zeros with completely random numbers to force it to learn true crypto sequences.
         for dataset in [train_data, val_data, test_data]:
             mask_0 = dataset['labels'] == 0
             shape = dataset['intermediates'][mask_0].shape
@@ -199,7 +186,6 @@ def main():
         'values': seed_accs_r7,
     }
 
-    # Save supplemental representation results
     os.makedirs('results/e02_representation', exist_ok=True)
     with open('results/e02_representation/e02_supplement_r5_results.json', 'w') as f:
         json.dump(results, f, indent=2)
