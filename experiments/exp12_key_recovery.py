@@ -64,17 +64,32 @@ def decrypt_one_round(cipher_name: str, ciphertext: np.ndarray, subkey: int) -> 
 
 
 def score_candidates(model, cipher_name, factory, C, C_prime,
-                     candidates, device):
+                     candidates, device, batch_size=32):
     scores = {}
     model.eval()
     for candidate in candidates:
         C_dec = decrypt_one_round(cipher_name, C, candidate)
         C_prime_dec = decrypt_one_round(cipher_name, C_prime, candidate)
         X = factory.get_representation('R2_xor_diff', C_dec, C_prime_dec)
-        X_tensor = torch.from_numpy(X).float().to(device)
-        with torch.no_grad():
-            s = model(X_tensor).squeeze().cpu().numpy()
-        scores[candidate] = float(np.mean(s))
+        
+        # Process in batches to avoid OOM if n_pairs is large, and compute log-LR
+        s_list = []
+        for i in range(0, len(C_dec), batch_size):
+            X_batch = X[i:i+batch_size]
+            X_tensor = torch.from_numpy(X_batch).float().to(device)
+            with torch.no_grad():
+                s_batch = model(X_tensor).squeeze().cpu().numpy()
+                if s_batch.ndim == 0:
+                    s_batch = np.array([s_batch])
+            s_list.append(s_batch)
+            
+        s = np.concatenate(s_list)
+        # Bayesian log-likelihood ratio
+        s = np.clip(s, 1e-7, 1 - 1e-7)
+        log_lr = np.log(s / (1 - s))
+        
+        # Average across N batches of m=32 as per Gohr, or just sum. We will sum.
+        scores[candidate] = float(np.sum(log_lr))
     return scores
 
 

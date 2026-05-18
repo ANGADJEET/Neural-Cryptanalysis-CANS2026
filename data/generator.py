@@ -91,20 +91,61 @@ class CipherDataGenerator:
             result['P_prime'] = self.cipher.random_plaintexts(n_samples)
         
         return result
+        
+    def generate_gohr_negatives(
+        self,
+        n_samples: int,
+        include_plaintext: bool = False,
+        include_trace: bool = False
+    ) -> Dict[str, np.ndarray]:
+        P1 = self.cipher.random_plaintexts(n_samples)
+        P2 = self.cipher.random_plaintexts(n_samples)
+        
+        mask = (P1 ^ P2) == self.delta_p
+        while np.any(mask):
+            P2[mask] = self.cipher.random_plaintexts(np.sum(mask))
+            mask = (P1 ^ P2) == self.delta_p
+            
+        if include_trace:
+            C, states = self.cipher.encrypt_with_trace(P1, self.n_rounds, self.key)
+            C_prime, states_prime = self.cipher.encrypt_with_trace(P2, self.n_rounds, self.key)
+        else:
+            C = self.cipher.encrypt(P1, self.n_rounds, self.key)
+            C_prime = self.cipher.encrypt(P2, self.n_rounds, self.key)
+        
+        result = {
+            'C': C,
+            'C_prime': C_prime,
+            'labels': np.zeros(n_samples, dtype=np.uint8)
+        }
+        
+        if include_plaintext:
+            result['P'] = P1
+            result['P_prime'] = P2
+            
+        if include_trace:
+            result['intermediates'] = np.stack(states, axis=1)
+            result['intermediates_prime'] = np.stack(states_prime, axis=1)
+            
+        return result
     
     def generate_balanced_dataset(
         self,
         n_samples: int,
         include_plaintext: bool = False,
         include_trace: bool = False,
-        shuffle: bool = True
+        shuffle: bool = True,
+        negative_type: str = 'uniform'
     ) -> Dict[str, np.ndarray]:
         n_each = n_samples // 2
         
         cipher_data = self.generate_cipher_samples(
             n_each, include_plaintext, include_trace
         )
-        random_data = self.generate_random_samples(n_each, include_plaintext)
+        if negative_type == 'gohr':
+            random_data = self.generate_gohr_negatives(n_each, include_plaintext, include_trace)
+        else:
+            random_data = self.generate_random_samples(n_each, include_plaintext)
         
         result = {
             'C': np.concatenate([cipher_data['C'], random_data['C']]),
@@ -132,7 +173,8 @@ class CipherDataGenerator:
         self,
         n_samples_per_round: int,
         min_rounds: int = 1,
-        max_rounds: Optional[int] = None
+        max_rounds: Optional[int] = None,
+        negative_type: str = 'uniform'
     ) -> Dict[int, Dict[str, np.ndarray]]:
         if max_rounds is None:
             max_rounds = self.cipher.max_rounds
@@ -142,7 +184,7 @@ class CipherDataGenerator:
             old_rounds = self.n_rounds
             self.n_rounds = r
             
-            datasets[r] = self.generate_balanced_dataset(n_samples_per_round)
+            datasets[r] = self.generate_balanced_dataset(n_samples_per_round, negative_type=negative_type)
             
             self.n_rounds = old_rounds
         
@@ -159,7 +201,8 @@ def generate_dataset(
     output_dir: str,
     include_plaintext: bool = False,
     include_trace: bool = False,
-    seed: int = 42
+    seed: int = 42,
+    negative_type: str = 'uniform'
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -171,12 +214,12 @@ def generate_dataset(
         seed=seed
     )
     
-    print(f"Generating {cipher} dataset with {n_rounds} rounds, delta_p=0x{delta_p:08x}")
+    print(f"Generating {cipher} dataset with {n_rounds} rounds, delta_p=0x{delta_p:08x}, negatives={negative_type}")
     
     splits = {
-        'train': generator.generate_balanced_dataset(n_train, include_plaintext, include_trace),
-        'val': generator.generate_balanced_dataset(n_val, include_plaintext, include_trace),
-        'test': generator.generate_balanced_dataset(n_test, include_plaintext, include_trace)
+        'train': generator.generate_balanced_dataset(n_train, include_plaintext, include_trace, negative_type=negative_type),
+        'val': generator.generate_balanced_dataset(n_val, include_plaintext, include_trace, negative_type=negative_type),
+        'test': generator.generate_balanced_dataset(n_test, include_plaintext, include_trace, negative_type=negative_type)
     }
     
     dataset_name = f"{cipher}_r{n_rounds}_delta{delta_p:08x}"

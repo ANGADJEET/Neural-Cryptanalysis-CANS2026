@@ -28,9 +28,9 @@ def train_one_round(cipher_name, cipher, n_rounds, model_name, representation,
         cipher=cipher_name, n_rounds=n_rounds,
         delta_p=cipher.get_default_delta_p()
     )
-    train_data = gen.generate_balanced_dataset(n_samples)
-    val_data = gen.generate_balanced_dataset(n_samples // 10)
-    test_data = gen.generate_balanced_dataset(n_samples // 10)
+    train_data = gen.generate_balanced_dataset(n_samples, negative_type='gohr')
+    val_data = gen.generate_balanced_dataset(n_samples // 10, negative_type='gohr')
+    test_data = gen.generate_balanced_dataset(n_samples // 10, negative_type='gohr')
 
     input_dim = get_input_dim(representation, cipher.block_size)
     train_ds = CryptoDataset(train_data, representation, cipher.block_size)
