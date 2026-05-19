@@ -1,0 +1,23 @@
+{
+  "independent": {
+    "mi": 0.0836249127984047,
+    "expected": 0.0
+  },
+  "deterministic": {
+    "mi": 0.6918004304170609,
+    "expected": 0.693
+  },
+  "noisy": {
+    "mi": 0.24184190124273303,
+    "expected_range": [
+      0.05,
+      0.5
+    ]
+  },
+  "crypto_3r": {
+    "mi": 0.6951255971193313,
+    "expected": "high (>> 0)"
+  },
+  "_passed": 4,
+  "_total": 4
+}
