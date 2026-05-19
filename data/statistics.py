@@ -84,6 +84,9 @@ def compute_differential_probability(
     n_samples: int = 100000,
     n_rounds: int = 1
 ) -> float:
+    """Count exact output diff matches. Only useful for 1-2 rounds.
+    For multi-round comparison, use compute_classical_distinguisher_accuracy().
+    """
     key = cipher.random_key()
     P = cipher.random_plaintexts(n_samples)
     P_prime = P ^ diff_in
@@ -95,6 +98,62 @@ def compute_differential_probability(
     matches = np.sum(actual_diff == diff_out)
     
     return matches / n_samples
+
+
+def compute_classical_distinguisher_accuracy(
+    cipher,
+    diff_in: int,
+    n_rounds: int,
+    n_samples: int = 100000,
+    n_keys: int = 5
+) -> float:
+    """Classical distinguisher using best per-bit bias of ΔC.
+    
+    Compares the bit-level statistics of real differential pairs
+    (E_k(P), E_k(P⊕ΔP)) against random pairs (E_k(Q₁), E_k(Q₂))
+    and finds the single bit with maximum separating power.
+    
+    Returns the best achievable accuracy over all bit positions.
+    """
+    accs = []
+    for _ in range(n_keys):
+        key = cipher.random_key()
+        half = n_samples // 2
+
+        # Positive: real differential pairs
+        P = cipher.random_plaintexts(half)
+        C = cipher.encrypt(P, n_rounds, key)
+        C_prime = cipher.encrypt((P ^ diff_in).astype(P.dtype), n_rounds, key)
+        diff_pos = C ^ C_prime
+
+        # Negative: independent random pairs (same key, no differential)
+        Q1 = cipher.random_plaintexts(half)
+        Q2 = cipher.random_plaintexts(half)
+        diff_neg = cipher.encrypt(Q1, n_rounds, key) ^ cipher.encrypt(Q2, n_rounds, key)
+
+        # Find the single bit with maximum distinguishing power
+        best_acc = 0.5
+        for bit in range(cipher.block_size):
+            pos_bit = ((diff_pos >> bit) & 1).astype(np.float32)
+            neg_bit = ((diff_neg >> bit) & 1).astype(np.float32)
+
+            pos_mean = pos_bit.mean()
+            neg_mean = neg_bit.mean()
+
+            if abs(pos_mean - neg_mean) > 0.001:
+                # Use the midpoint as threshold
+                threshold = (pos_mean + neg_mean) / 2
+                all_bits = np.concatenate([pos_bit, neg_bit])
+                all_labels = np.concatenate([np.ones(half), np.zeros(half)])
+                # Predict based on which side of threshold the bit falls
+                if pos_mean > neg_mean:
+                    preds = (all_bits > threshold).astype(float)
+                else:
+                    preds = (all_bits < threshold).astype(float)
+                acc = float(np.mean(preds == all_labels))
+                best_acc = max(best_acc, acc)
+        accs.append(best_acc)
+    return float(np.mean(accs))
 
 
 def estimate_bias(
@@ -113,3 +172,4 @@ def estimate_bias(
         biases[block_size - 1 - i] = abs(prob_one - 0.5)
     
     return biases, np.max(biases)
+

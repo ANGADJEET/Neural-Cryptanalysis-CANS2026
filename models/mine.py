@@ -153,13 +153,16 @@ class MutualInfoEstimator:
     ) -> float:
         XZ = np.concatenate([X, Z], axis=1)
         estimator_xz = MutualInfoEstimator(
-            XZ.shape[1], self.mine.T[0].in_features - 1, 
+            input_dim=XZ.shape[1],
+            hidden_dims=[256, 128, 64],
             device=self.device
         )
         mi_xz_y = estimator_xz.estimate(XZ, Y, n_epochs, batch_size)
         
         estimator_z = MutualInfoEstimator(
-            Z.shape[1], device=self.device
+            input_dim=Z.shape[1],
+            hidden_dims=[256, 128, 64],
+            device=self.device
         )
         mi_z_y = estimator_z.estimate(Z, Y, n_epochs, batch_size)
         

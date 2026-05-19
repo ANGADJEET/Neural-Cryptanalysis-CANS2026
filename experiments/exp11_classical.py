@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from ciphers import get_cipher
 from data.generator import CipherDataGenerator
 from data.dataloader import CryptoDataset, get_input_dim
-from data.statistics import compute_differential_probability
+from data.statistics import compute_differential_probability, compute_classical_distinguisher_accuracy
 from models import get_model
 from training.trainer import Trainer
 from evaluation.metrics import evaluate_model
@@ -44,19 +44,20 @@ def single_run(seed, args):
     rounds_list = args.round_list
 
     neural_acc = {}
-    classical_dp = {}
+    classical_acc = {}
 
     for n_rounds in rounds_list:
         print(f"    Round {n_rounds}...", end=' ')
 
-        dp = compute_differential_probability(
-            diff_in=cipher.get_default_delta_p(),
-            diff_out=0,
+        # Use bit-level bias distinguisher instead of broken exact-DP
+        classical = compute_classical_distinguisher_accuracy(
             cipher=cipher,
+            diff_in=cipher.get_default_delta_p(),
+            n_rounds=n_rounds,
             n_samples=min(args.samples, 500_000),
-            n_rounds=n_rounds
+            n_keys=3
         )
-        classical_dp[n_rounds] = float(dp)
+        classical_acc[n_rounds] = float(classical)
 
         gen = CipherDataGenerator(
             cipher=args.cipher, n_rounds=n_rounds,
@@ -84,11 +85,11 @@ def single_run(seed, args):
 
         metrics = evaluate_model(model, test_loader, device)
         neural_acc[n_rounds] = float(metrics['accuracy'])
-        print(f"neural={metrics['accuracy']:.4f}, dp={dp:.6f}")
+        print(f"neural={metrics['accuracy']:.4f}, classical={classical:.4f}")
 
     return {
         'neural': {str(k): v for k, v in neural_acc.items()},
-        'classical_dp': {str(k): v for k, v in classical_dp.items()},
+        'classical_acc': {str(k): v for k, v in classical_acc.items()},
     }
 
 
@@ -134,12 +135,12 @@ def main():
                     neural_vals = [nr]
                     neural_means[r] = nr
                     neural_stds[r] = 0
-            if 'classical_dp' in results and key in results['classical_dp']:
-                dp = results['classical_dp'][key]
-                if isinstance(dp, dict) and 'mean' in dp:
-                    classical_means[r] = min(1.0, 0.5 + dp['mean'])
-                elif isinstance(dp, (int, float)):
-                    classical_means[r] = min(1.0, 0.5 + dp)
+            if 'classical_acc' in results and key in results['classical_acc']:
+                ca = results['classical_acc'][key]
+                if isinstance(ca, dict) and 'mean' in ca:
+                    classical_means[r] = ca['mean']
+                elif isinstance(ca, (int, float)):
+                    classical_means[r] = ca
 
     gohr = GOHR_RESULTS.get(args.cipher, {})
 
@@ -156,7 +157,7 @@ def main():
     if classical_means:
         cm = [classical_means.get(r, 0.5) for r in rounds]
         ax.plot(rounds, cm, 'r^--', linewidth=2, markersize=8,
-                label='Classical (0.5 + DP)')
+                label='Classical (best-bit bias)')
 
     if gohr:
         gohr_rounds = sorted(r for r in gohr if r in rounds or

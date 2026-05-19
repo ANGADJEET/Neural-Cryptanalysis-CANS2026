@@ -849,7 +849,7 @@ def run_difference_search_experiment(args) -> Dict:
 
 
 def run_classical_comparison_experiment(args) -> Dict:
-    from data.statistics import compute_differential_probability
+    from data.statistics import compute_classical_distinguisher_accuracy
     
     print("=" * 50)
     print("E11: Classical vs Neural Comparison")
@@ -865,16 +865,15 @@ def run_classical_comparison_experiment(args) -> Dict:
     for n_rounds in rounds_list:
         print(f"\n--- Round {n_rounds} ---")
         
-        dp = compute_differential_probability(
-            diff_in=cipher.get_default_delta_p(),
-            diff_out=0,
+        classical_acc = compute_classical_distinguisher_accuracy(
             cipher=cipher,
+            diff_in=cipher.get_default_delta_p(),
+            n_rounds=n_rounds,
             n_samples=min(args.samples, 500000),
-            n_rounds=n_rounds
+            n_keys=3
         )
-        classical_acc = min(1.0, 0.5 + dp)
         classical_results[n_rounds] = classical_acc
-        print(f"  Classical DP = {dp:.6f}, proxy acc = {classical_acc:.4f}")
+        print(f"  Classical (best-bit bias) acc = {classical_acc:.4f}")
         
         model, metrics, _, _ = _train_and_evaluate(
             args, cipher, n_rounds, n_epochs=20, patience=3
@@ -890,10 +889,10 @@ def run_classical_comparison_experiment(args) -> Dict:
     
     rounds = sorted(neural_results.keys())
     ax.plot(rounds, [neural_results[r] for r in rounds], 'bo-', label='Neural', linewidth=2)
-    ax.plot(rounds, [classical_results[r] for r in rounds], 'r^--', label='Classical (DP)', linewidth=2)
+    ax.plot(rounds, [classical_results[r] for r in rounds], 'r^--', label='Classical (best-bit bias)', linewidth=2)
     ax.axhline(y=0.5, color='gray', linestyle=':', alpha=0.5, label='Random')
     ax.set_xlabel('Number of Rounds')
-    ax.set_ylabel('Accuracy / Estimated Advantage')
+    ax.set_ylabel('Accuracy')
     ax.set_title(f'Neural vs Classical — {args.cipher.upper()}')
     ax.legend()
     ax.grid(True, alpha=0.3)

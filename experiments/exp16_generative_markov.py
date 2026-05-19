@@ -224,17 +224,15 @@ def single_run(seed, args):
     print(f"    {'─' * 46}")
 
     for r in range(1, args.rounds - 1):
-        X_markov = np.concatenate([
-            diff_traces[:n_train, r, :],
-            diff_traces[:n_train, r, :]
-        ], axis=1)
+        # Markov model: predict r+1 from ONLY round r (memoryless assumption)
+        X_markov = diff_traces[:n_train, r, :]  # shape: (n_train, block_size)
         X_memory = np.concatenate([
             diff_traces[:n_train, r - 1, :],
             diff_traces[:n_train, r, :]
         ], axis=1)
         Y_target = diff_traces[:n_train, r + 1, :]
 
-        model_a = RoundPredictor(2 * block_size, block_size, hidden=256)
+        model_a = RoundPredictor(block_size, block_size, hidden=256)
         mse_a = train_predictor(
             model_a, X_markov, Y_target,
             n_epochs=args.pred_epochs, batch_size=args.batch_size, device=device
