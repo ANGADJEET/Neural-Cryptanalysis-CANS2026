@@ -243,47 +243,86 @@ def run_representation_experiment(args) -> Dict:
 
 
 def run_memory_experiment(args) -> Dict:
+    """E05: Memory Depth Ablation — REAL training, not placeholders."""
+    from data.representations import RepresentationFactory
+    from models import get_model
+    from training.trainer import Trainer
+    from evaluation.metrics import evaluate_model
+    from torch.utils.data import DataLoader, TensorDataset
+
     print("=" * 50)
     print("E05: Memory Depth Ablation")
     print("=" * 50)
     
     cipher = get_cipher(args.cipher)
     n_rounds = args.rounds[0] if args.rounds else 6
-    
-    generator = CipherDataGenerator(
-        cipher=args.cipher,
-        n_rounds=n_rounds,
-        delta_p=cipher.get_default_delta_p()
-    )
-    
-    train_data = generator.generate_balanced_dataset(
-        args.samples, include_trace=True
-    )
-    val_data = generator.generate_balanced_dataset(
-        args.samples // 10, include_trace=True
-    )
-    test_data = generator.generate_balanced_dataset(
-        args.samples // 10, include_trace=True
-    )
-    
-    results = {}
     device = args.device if torch.cuda.is_available() else 'cpu'
     
+    # Generate real differential traces
+    key = cipher.random_key()
+    half = args.samples // 2
+    factory = RepresentationFactory(block_size=cipher.block_size)
+
+    P = cipher.random_plaintexts(half)
+    P_prime = (P ^ cipher.get_default_delta_p()).astype(P.dtype)
+    _, trace1 = cipher.encrypt_with_trace(P, n_rounds, key)
+    _, trace2 = cipher.encrypt_with_trace(P_prime, n_rounds, key)
+
+    pos_traces = []
+    for r in range(n_rounds):
+        diff = factory.get_representation('R2_xor_diff', trace1[r], trace2[r])
+        pos_traces.append(diff)
+    pos_traces = np.stack(pos_traces, axis=1)
+
+    Q = cipher.random_plaintexts(half)
+    R = cipher.random_plaintexts(half)
+    _, trace_q = cipher.encrypt_with_trace(Q, n_rounds, key)
+    _, trace_r = cipher.encrypt_with_trace(R, n_rounds, key)
+
+    neg_traces = []
+    for r in range(n_rounds):
+        diff = factory.get_representation('R2_xor_diff', trace_q[r], trace_r[r])
+        neg_traces.append(diff)
+    neg_traces = np.stack(neg_traces, axis=1)
+
+    X_full = np.concatenate([pos_traces, neg_traces], axis=0)
+    Y_full = np.concatenate([np.ones(half), np.zeros(half)])
+
+    perm = np.random.permutation(len(Y_full))
+    X_full, Y_full = X_full[perm], Y_full[perm]
+
+    n_total = len(Y_full)
+    n_train = int(0.8 * n_total)
+    n_val = int(0.1 * n_total)
+
+    X_train, Y_train = X_full[:n_train], Y_full[:n_train]
+    X_val, Y_val = X_full[n_train:n_train+n_val], Y_full[n_train:n_train+n_val]
+    X_test, Y_test = X_full[n_train+n_val:], Y_full[n_train+n_val:]
+
+    results = {}
     for depth in [1, 2, 3, 4, n_rounds]:
+        depth = min(depth, n_rounds)
         print(f"\n--- Depth {depth} ---")
         
-        input_dim = depth * cipher.block_size
-        
-        from models.rnn import CryptoLSTM
-        model = CryptoLSTM(
-            input_dim=cipher.block_size,
-            hidden_size=64,
-            num_layers=1
-        ).to(device)
-        
-        results[depth] = 0.5 + 0.1 * (1 - 1/depth)
-        
-        print(f"Accuracy (placeholder): {results[depth]:.4f}")
+        X_tr = torch.from_numpy(X_train[:, -depth:, :]).float()
+        X_vl = torch.from_numpy(X_val[:, -depth:, :]).float()
+        X_ts = torch.from_numpy(X_test[:, -depth:, :]).float()
+        Y_tr = torch.from_numpy(Y_train).float()
+        Y_vl = torch.from_numpy(Y_val).float()
+        Y_ts = torch.from_numpy(Y_test).float()
+
+        train_loader = DataLoader(TensorDataset(X_tr, Y_tr), batch_size=5000, shuffle=True)
+        val_loader = DataLoader(TensorDataset(X_vl, Y_vl), batch_size=5000)
+        test_loader = DataLoader(TensorDataset(X_ts, Y_ts), batch_size=5000)
+
+        model = get_model('lstm', input_dim=cipher.block_size)
+        trainer = Trainer(model=model, train_loader=train_loader,
+                          val_loader=val_loader, device=device, use_wandb=False)
+        trainer.train(n_epochs=20, early_stopping_patience=5, save_best=False)
+
+        metrics = evaluate_model(model, test_loader, device)
+        results[depth] = float(metrics['accuracy'])
+        print(f"  Accuracy: {results[depth]:.4f}")
     
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
