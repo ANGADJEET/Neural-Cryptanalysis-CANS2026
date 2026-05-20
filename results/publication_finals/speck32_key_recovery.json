@@ -1,0 +1,45 @@
+{
+  "cipher": "speck32",
+  "n_rounds": 5,
+  "n_pairs": 20000,
+  "key_correct_rate": 0.4,
+  "mean_low_rank": 14.8,
+  "mean_high_rank": 2.0,
+  "per_seed": [
+    {
+      "key_correct": 1,
+      "low_rank": 1,
+      "high_rank": 1,
+      "full_rank": 1,
+      "dist_acc": 0.97956
+    },
+    {
+      "key_correct": 1,
+      "low_rank": 1,
+      "high_rank": 1,
+      "full_rank": 1,
+      "dist_acc": 0.98632
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 70,
+      "high_rank": 2,
+      "full_rank": 257,
+      "dist_acc": 0.9813
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 1,
+      "high_rank": 2,
+      "full_rank": 2,
+      "dist_acc": 0.986
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 1,
+      "high_rank": 4,
+      "full_rank": 4,
+      "dist_acc": 0.98476
+    }
+  ]
+}

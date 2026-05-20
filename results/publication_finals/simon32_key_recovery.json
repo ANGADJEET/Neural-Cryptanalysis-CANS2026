@@ -1,0 +1,45 @@
+{
+  "cipher": "simon32",
+  "n_rounds": 5,
+  "n_pairs": 20000,
+  "key_correct_rate": 0.0,
+  "mean_low_rank": 122.8,
+  "mean_high_rank": 128.8,
+  "per_seed": [
+    {
+      "key_correct": 0,
+      "low_rank": 87,
+      "high_rank": 124,
+      "full_rank": 257,
+      "dist_acc": 0.99998
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 163,
+      "high_rank": 102,
+      "full_rank": 257,
+      "dist_acc": 0.99992
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 208,
+      "high_rank": 186,
+      "full_rank": 257,
+      "dist_acc": 1.0
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 127,
+      "high_rank": 84,
+      "full_rank": 257,
+      "dist_acc": 0.99998
+    },
+    {
+      "key_correct": 0,
+      "low_rank": 29,
+      "high_rank": 148,
+      "full_rank": 257,
+      "dist_acc": 0.99998
+    }
+  ]
+}

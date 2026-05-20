@@ -4,6 +4,7 @@ from .cnn import CNN, ResidualCNN
 from .siamese import SiameseNetwork
 from .rnn import CryptoLSTM, CryptoGRU
 from .mine import MINE, MutualInfoEstimator
+from .gohr_resnet import GohrResNet
 
 __all__ = [
     'MLP',
@@ -15,6 +16,7 @@ __all__ = [
     'CryptoGRU',
     'MINE',
     'MutualInfoEstimator',
+    'GohrResNet',
 ]
 
 
@@ -28,6 +30,7 @@ def get_model(name: str, input_dim: int, **kwargs):
         'lstm': CryptoLSTM,
         'gru': CryptoGRU,
         'mine': MINE,
+        'gohr_resnet': GohrResNet,
     }
     
     if name.lower() not in models:
