@@ -1,0 +1,21 @@
+\begin{abstract}
+Neural differential distinguishers can break more rounds of block ciphers than their classical counterparts, yet every published evaluation targets a single cipher family.
+No controlled study has measured whether the features these networks learn \emph{transfer} across structurally different ciphers---leaving open whether neural vulnerability is a property of the cipher or an artifact of the architecture.
+We train identical classifiers (MLP, CNN, LSTM, ResNet, and four others) on three cipher families---\speck (ARX), \simon (Feistel), and \present (SPN)---and report three findings.
+First, we establish a vulnerability ordering: \simon remains distinguishable through 9 rounds (28\% of full depth), \speck through 7 rounds (32\%), and \present through 6 rounds (19\%), all statistically significant ($p < 0.001$).
+Second, we discover that transfer polarity is family-dependent: an ARX distinguisher trained at 5 rounds scores \emph{below chance} (45.5\%, $p < 10^{-8}$) when evaluated at 3 rounds, while an SPN distinguisher trained at 4 rounds scores 99.1\% at 2 rounds.
+Third, all seven architectures agree within 2\pp on the same cipher, and ResNet improves over MLP by at most 2.6\pp, confirming that the ordering is intrinsic to cipher structure.
+These results fill a gap identified by a recent survey of 66~peer-reviewed papers in neural differential cryptanalysis~\citep{gerault2024sok}: no prior work compares transfer behavior across cipher families under controlled conditions.
+\end{abstract}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{hero_fig.png}
+  \caption{\textbf{Overview.}
+  We train identical neural distinguishers on three cipher families (left) using seven architectures (center) and report three discoveries (right):
+  (3.1)~a vulnerability ordering \simon $\gg$ \speck $>$ \present,
+  (3.2)~transfer polarity is family-dependent---ARX and Feistel show anti-transfer ($<$50\%) while SPN shows positive transfer ($>$99\%),
+  (3.3)~neural distinguishers outperform the best-bit classical baseline by 15--37\pp across all families.
+  All architectures agree within 2\pp, confirming these findings are intrinsic to cipher structure.}
+  \label{fig:hero}
+\end{figure*}

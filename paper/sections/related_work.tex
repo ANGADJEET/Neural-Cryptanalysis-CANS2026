@@ -1,0 +1,31 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Classical differential cryptanalysis.}
+Biham and Shamir~\citep{biham1991differential} introduced differential cryptanalysis, tracing how input differences propagate through iterated block ciphers.
+Matsui~\citep{matsui1993linear} complemented this with linear cryptanalysis, exploiting affine approximations of round functions.
+Automated trail search using MILP~\citep{mouha2012milp} and SAT/SMT solvers has extended classical analysis to high round counts, but these methods operate within the DDT framework and cannot capture features outside it.
+
+\paragraph{Neural differential distinguishers.}
+Gohr~\citep{gohr2019} trained a depth-10 residual network to distinguish 8-round \speck from random at 51.4\%, achieving 11-round key recovery via Bayesian scoring.
+Subsequent work has explored architecture design (Bellini et al.'s cipher-agnostic DBitNet~\citep{bellini2023dbitnet}; attention mechanisms~\citep{lee2024attention}; gated linear units~\citep{jang2023glu}; SENet~\citep{bao2022enhancing}), data scaling (Zhang et al.~\citep{zhang2025multipair} use multi-pair inputs), and cipher breadth (24 primitives cataloged in~\citep{gerault2024sok}).
+The current state of the art on our target ciphers is:
+\simon at 11~rounds via DBitNet/SENet~\citep{bellini2023dbitnet,tian2022simon},
+\speck at 8~rounds via Gohr's ResNet~\citep{gohr2019},
+and \present at 9~rounds via DBitNet~\citep{bellini2023dbitnet}.
+Our MLP-based results are intentionally weaker (fewer rounds) because our contribution is the controlled \emph{comparison}, not depth maximization.
+
+\paragraph{Explainability of neural distinguishers.}
+Benamira et al.~\citep{benamira2021deeper} showed that Gohr's network learns differential-linear features corresponding to truncated differential patterns in the penultimate rounds.
+Gohr, Leander, and Neumann~\citep{gohr2022assessment} proved that under independent round keys, SPN and Feistel distinguishers can only learn features equivalent to the DDT, while ARX distinguishers exploit additional non-differential information.
+This theoretical result directly predicts our transfer findings: differential-only features (SPN) should compose hierarchically, while non-differential features (ARX) are round-specific.
+
+\paragraph{Transfer learning in adversarial ML.}
+Transfer attacks are well-studied for adversarial examples: perturbations crafted on one model transfer to another~\citep{gohr2019}.
+In cryptanalysis, however, no prior work has measured whether neural distinguishers transfer across ciphers or round counts.
+The closest work is Baksi et al.~\citep{baksi2022neural}, who trained distinguishers on multiple lightweight ciphers but did not test cross-application.
+
+\medskip\noindent\textbf{Gap.}
+The survey by Gérault et al.~\citep{gerault2024sok} catalogs 66 peer-reviewed papers in neural differential cryptanalysis.
+None studies cross-family transfer under controlled conditions.
+We fill this gap with a benchmark that holds architecture, data volume, input representation, and training protocol constant while varying only the cipher and round count.

@@ -1,0 +1,7 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We present the first controlled cross-family transfer study in neural differential cryptanalysis, comparing ARX (\speck), Feistel (\simon), and SPN (\present) under identical experimental conditions.
+The central finding---transfer polarity is family-dependent, with ARX and Feistel exhibiting anti-transfer (45.5\%, $p < 10^{-8}$) and SPN exhibiting positive transfer (99.1\%, $p < 10^{-11}$)---provides direct empirical evidence about the structural features these networks learn.
+All results are obtained with MLP in the 2-1-CT-R setting; the ResNet comparison ($\leq$2.6\pp gap, ordering preserved) confirms the findings are architecture-independent.
+Future work should test transfer polarity under stronger architectures (DBitNet, SENet), evolutionary input difference search, multi-pair aggregation, and on larger block sizes (SPECK64/128, SIMON64/128).

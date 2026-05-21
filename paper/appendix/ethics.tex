@@ -1,0 +1,17 @@
+\section{Broader Impact and Ethics}
+\label{sec:app-ethics}
+
+\paragraph{Dual-use considerations.}
+Neural cryptanalysis research inherently carries dual-use risk: techniques that evaluate cipher security can also be used to attack deployed systems.
+We mitigate this in three ways.
+First, our results apply only to round-reduced variants---all three target ciphers use substantially more rounds than our distinguishers penetrate (e.g., 22 rounds for \speck vs.\ our 7-round limit).
+Second, the transfer polarity finding is primarily diagnostic: it reveals \emph{what} neural networks learn, not how to break full ciphers.
+Third, we report all negative results (failed key recovery on \simon, failed RL search) alongside positive ones, providing an honest assessment of the method's limitations.
+
+\paragraph{Responsible disclosure.}
+Our work does not reveal any new vulnerability in full-round implementations of \speck, \simon, or \present.
+The round-reduced attacks are consistent with the known security margins established by the cipher designers and subsequent cryptanalytic literature.
+
+\paragraph{Deployment context.}
+Lightweight ciphers are deployed in resource-constrained environments (IoT, RFID, medical devices) where security margins are necessarily tighter than in general-purpose ciphers like AES.
+Our cross-family comparison provides empirical evidence to inform cipher selection decisions: the vulnerability ordering (\simon $\gg$ \speck $>$ \present) may be relevant when choosing between these ciphers for constrained applications, alongside other factors such as hardware cost, latency, and energy consumption.

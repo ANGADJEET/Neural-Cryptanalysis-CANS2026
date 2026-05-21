@@ -1,0 +1,33 @@
+\section{Introduction}
+\label{sec:intro}
+
+Lightweight block ciphers protect billions of IoT sensors, RFID tags, and embedded controllers where silicon area and energy are scarce~\citep{bogdanov2007present,beaulieu2015simon}.
+The three dominant design paradigms---ARX (Add-Rotate-XOR), Feistel networks, and Substitution-Permutation Networks (SPN)---each make distinct structural trade-offs between diffusion speed, parallelism, and hardware cost.
+Whether one paradigm is systematically more vulnerable to a given class of attack than another is a question with direct implications for cipher selection in constrained environments.
+
+Classical differential cryptanalysis~\citep{biham1991differential} answers this question by exhaustive search over differential trails, an approach that becomes computationally intractable as round counts grow.
+Automated methods based on MILP~\citep{mouha2012milp} extend the reach of classical analysis, but they optimize within a fixed algebraic framework and cannot discover features that fall outside the differential distribution table (DDT).
+
+In 2019, Gohr~\citep{gohr2019} demonstrated that a residual neural network, trained as a binary classifier on ciphertext pairs, could distinguish 8-round \speck from random---surpassing the best known classical distinguisher.
+Since then, the field has expanded rapidly: a recent systematic survey~\citep{gerault2024sok} catalogs 66 peer-reviewed papers that train neural differential distinguishers across 24 primitives, using 15+ distinct architectures and data volumes spanning five orders of magnitude.
+Bellini et al.~\citep{bellini2023dbitnet} introduced a cipher-agnostic pipeline achieving 9-round \present and 11-round \simon distinguishers, while Bao et al.~\citep{bao2022enhancing} pushed \simon key recovery to 15 rounds using neutral bits.
+Yet, as Gérault et al.~\citep{gerault2024sok} explicitly note, ``the absence of systematic knowledge organization has fostered redundant research efforts,'' and no study compares transfer behavior across cipher families under controlled experimental conditions.
+
+Our key insight is that transfer polarity---whether a distinguisher trained on one round count helps or hurts on another---reveals what the network has actually learned.
+Gohr et al.~\citep{gohr2022assessment} proved that SPN and Feistel distinguishers can only learn differential features under independent round keys, while ARX distinguishers learn additional non-differential features.
+If SPN features are purely differential, they should compose hierarchically across rounds (positive transfer); if ARX features include non-differential components, they may be round-specific (anti-transfer).
+Our experiments confirm exactly this prediction and extend it to Feistel ciphers, where we observe anti-transfer despite the theoretical expectation of differential-only features.
+
+We make three contributions, each falsifiable and tied to a specific experiment:
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Cross-family vulnerability ordering.} Under identical architectures and training, \simon is distinguishable 2--3 rounds deeper than \speck or \present (\Cref{sec:exp-vulnerability}), with bootstrap 95\% confidence intervals for all boundary-round accuracies.
+  \item \textbf{Transfer polarity is family-dependent.} \speck (ARX) and \simon (Feistel) exhibit \emph{anti-transfer} ($\leq$48.6\%, $p < 10^{-5}$), while \present (SPN) exhibits \emph{positive transfer} ($\geq$96.9\%, $p < 10^{-6}$)~(\Cref{sec:exp-transfer}). This is the first demonstration of below-chance transfer in neural cryptanalysis.
+  \item \textbf{Architecture independence.} Seven architectures (MLP, CNN, Residual CNN, Gohr-MLP, LSTM, GRU, Siamese) and Gohr's ResNet all agree within 2.6\pp on the same cipher (\Cref{sec:exp-ablation}), confirming that vulnerability ordering and transfer polarity are properties of cipher structure, not model capacity.
+\end{enumerate}
+
+\Cref{sec:related} surveys related work.
+\Cref{sec:problem} formalizes the threat model and notation.
+\Cref{sec:method} describes the experimental methodology.
+\Cref{sec:experiments} presents the main results.
+\Cref{sec:discussion} interprets the findings and acknowledges limitations.
+\Cref{sec:conclusion} concludes.
