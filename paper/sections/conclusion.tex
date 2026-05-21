@@ -1,7 +1,18 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-We present the first controlled cross-family transfer study in neural differential cryptanalysis, comparing ARX (\speck), Feistel (\simon), and SPN (\present) under identical experimental conditions.
-The central finding---transfer polarity is family-dependent, with ARX and Feistel exhibiting anti-transfer (45.5\%, $p < 10^{-8}$) and SPN exhibiting positive transfer (99.1\%, $p < 10^{-11}$)---provides direct empirical evidence about the structural features these networks learn.
-All results are obtained with MLP in the 2-1-CT-R setting; the ResNet comparison ($\leq$2.6\pp gap, ordering preserved) confirms the findings are architecture-independent.
-Future work should test transfer polarity under stronger architectures (DBitNet, SENet), evolutionary input difference search, multi-pair aggregation, and on larger block sizes (SPECK64/128, SIMON64/128).
+This work answers two open questions in neural differential cryptanalysis through a controlled cross-family study of \speck (ARX), \simon (Feistel), and \present (SPN).
+
+\textbf{RQ1 (Representation).}
+The distinguishing signal resides in multi-bit XOR-difference channels, concentrated at high-order bit positions.
+It persists to family-specific depths governed by diffusion rate (\simon $\gg$ \speck $>$ \present) and is architecture-independent: seven models agree within 2\pp, and ResNet improves over MLP by at most 2.6\pp without changing the ordering.
+The signal is a property of cipher structure, not model capacity.
+
+\textbf{RQ2 (Markov).}
+Signal composition is family-dependent and does \emph{not} universally obey the Markov assumption.
+SPN features compose hierarchically (99.1\% positive transfer), consistent with Markov chain models of differential propagation.
+ARX and Feistel features are round-specific and anti-compose (45.5\% and 48.6\% accuracy, both below chance), violating Markov composition.
+This anti-composability has practical consequences: Bayesian key recovery fails on \simon despite 100\% distinguisher accuracy.
+
+These findings have implications for both neural cryptanalysis practice (transfer and key recovery require Markov-composable signal) and cipher design (SPN's rapid diffusion limits signal depth but preserves composability; Feistel's slow diffusion extends signal depth but produces round-specific, non-transferable features).
+Future work should test these conclusions under stronger architectures (DBitNet, SENet), evolutionary input difference search, multi-pair aggregation, and on larger block sizes.

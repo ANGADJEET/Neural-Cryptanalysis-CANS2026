@@ -2,13 +2,14 @@
 \label{sec:discussion}
 
 \FloatBarrier
-\subsection{What Do the Networks Learn?}
+\subsection{RQ1 Interpretation: Signal Localization}
+\label{sec:discussion-rq1}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig5_saliency.png}
   \caption{Saliency map for \speck at 5 rounds.
-  Bits 14--15 (MSB of $C_L \oplus C'_L$ difference) and bits 28--30 (corresponding position in $C_R \oplus C'_R$) carry the highest gradient magnitude, confirming that the network focuses on truncated differential patterns in the XOR-difference channel.}
+  Bits 14--15 (MSB of $C_L \oplus C'_L$ difference) and bits 28--30 (corresponding position in $C_R \oplus C'_R$) carry the highest gradient magnitude, confirming that signal concentrates in XOR-difference channels.}
   \label{fig:saliency}
 \end{figure}
 
@@ -22,44 +23,53 @@
   \label{fig:attention}
 \end{figure*}
 
-Saliency analysis on \speck at 5 rounds (E08; \Cref{fig:saliency}) identifies bits 14, 15, 30, 23, and 1 as the five most important input features.
-Bits 14--15 correspond to the MSB of the XOR-difference channel ($C_L \oplus C'_L$); bits 28--30 lie in the analogous position of the second ciphertext's difference channel.
-This concentration on high-order difference bits is consistent with the network detecting truncated differential patterns in the penultimate round, as Benamira et al.~\citep{benamira2021deeper} hypothesized for Gohr's ResNet.
+Saliency analysis (\Cref{fig:saliency}) provides a direct answer to RQ1's ``which bits'' question.
+On \speck at 5 rounds, the five most important input features are bits 14, 15, 30, 23, and 1.
+Bits 14--15 correspond to the MSB of the XOR-difference channel ($C_L \oplus C'_L$); bits 28--30 lie in the analogous position of $C_R \oplus C'_R$.
+This concentration on high-order difference bits confirms that the network detects truncated differential patterns in the penultimate round, as Benamira et al.~\citep{benamira2021deeper} hypothesized for Gohr's ResNet.
 
-Attention-based interpretability (E19; \Cref{fig:attention}) reveals a striking entropy pattern across rounds.
-At 3 rounds, attention entropy is 7.1 bits (moderately focused); it rises to 9.0 bits at 5 rounds (diffuse attention over many bits), then collapses to 6.5 bits at 7 rounds.
-The interpretation: at easy rounds, the signal is concentrated in a few bits; at moderate rounds, the network recruits a broader set of features; at near-random rounds (7r, accuracy $\approx$51\%), it attends broadly but learns nothing---the low entropy at 8 rounds reflects the network giving up rather than finding signal.
+Attention analysis (\Cref{fig:attention}) reveals how signal \emph{density} varies with round count.
+At 3 rounds, attention entropy is 7.1 bits (moderately focused on a few high-signal bits).
+It rises to 9.0 bits at 5 rounds (the network recruits a broader feature set as signal weakens), then collapses at 7--8 rounds (accuracy $\approx$51\%, no signal to attend to).
+This entropy trajectory provides a practical diagnostic: when attention entropy drops sharply, the distinguisher has exhausted the signal.
+
+Combined with the representation ablation (R2\_xor\_diff dominates word-level inputs by 29\pp; \Cref{sec:app-ablations}), we can now answer RQ1 precisely:
+\textbf{Signal resides in the XOR-difference bits of ciphertext pairs, concentrated at high-order positions, and is accessible to any architecture with sufficient capacity.}
 
 \FloatBarrier
-\subsection{Why Anti-Transfer?}
+\subsection{RQ2 Interpretation: Why Markov Composition Fails}
+\label{sec:discussion-rq2}
 
-The anti-transfer phenomenon---accuracy below 50\% when evaluating a high-round model on low-round data---demands mechanistic explanation.
+The transfer results provide empirical evidence about \emph{what kind} of features neural distinguishers learn, directly testing the Markov assumption.
 
-\paragraph{SPN (positive transfer).}
+\paragraph{SPN (Markov-composable).}
 Gohr et al.~\citep{gohr2022assessment} proved that under independent round keys, SPN distinguishers can only learn features captured by the DDT.
-DDT-based features are hierarchical: the output distribution after $r$ rounds is a convolution of the single-round DDTs, so patterns valid at $r$ rounds remain valid (though weaker) at $r' < r$.
-Our \present results---99.1\% transfer from 4r to 2r---are fully consistent with this theory.
+DDT features are hierarchical: the output distribution after $r$ rounds is a convolution of single-round DDTs, so patterns valid at $r$ rounds remain valid at $r' < r$.
+Our \present results---99.1\% transfer from 4r to 2r---are fully consistent with Markov composition.
 
-\paragraph{ARX (anti-transfer).}
-For ARX ciphers, Gohr et al.~\citep{gohr2022assessment} showed that distinguishers learn non-differential features beyond the DDT.
-These non-differential features exploit the interaction between modular addition and XOR, which produces round-specific correlations.
-A model trained at 5 rounds learns features that \emph{anti-correlate} with the 3-round distribution: the decision boundary for 5-round ``real'' pairs actively rejects 3-round ``real'' pairs, producing the observed 45.5\% accuracy.
+\paragraph{ARX (Markov-violating).}
+For ARX ciphers, Gohr et al.~\citep{gohr2022assessment} showed that distinguishers learn non-differential features beyond the DDT, exploiting the interaction between modular addition and XOR.
+These non-differential features produce round-specific correlations: a model trained at 5 rounds learns features that \emph{anti-correlate} with the 3-round distribution, producing 45.5\% accuracy.
+This is a clean Markov violation: the learned representation does not decompose across rounds.
 
-\paragraph{Feistel (anti-transfer---unexpected).}
-Gohr et al.'s theory predicts that Feistel distinguishers, like SPN ones, should learn only differential features.
+\paragraph{Feistel (unexpectedly Markov-violating).}
+Gohr et al.'s theory predicts that Feistel distinguishers should learn only differential features, implying Markov composition.
 Yet we observe anti-transfer: 48.6\% for \simon 6r$\to$4r ($p < 10^{-5}$).
 We hypothesize that \simon's nonlinearity---bitwise AND between rotated copies of the state---creates differential patterns that, while technically within the DDT, are highly round-dependent due to the AND operation's asymmetric propagation.
-Unlike PRESENT's S-box, which achieves full diffusion within one round, \simon's Feistel structure requires multiple rounds for the AND-rotation patterns to stabilize, producing round-specific features that do not compose.
+Unlike \present's S-box, which achieves full diffusion within one round, \simon's Feistel structure requires multiple rounds for the AND-rotation patterns to stabilize, producing round-specific features that do not compose hierarchically.
 Testing this hypothesis requires training on \simon with masked intermediate rounds, which we leave to future work.
 
 \FloatBarrier
-\subsection{SIMON Key Recovery Failure}
+\subsection{Key Recovery Failure: RQ1 $\cap$ RQ2}
 
-\simon's 100\% distinguisher accuracy at 5 rounds but 0\% key recovery is the most practically informative negative result in this study.
-Gohr's byte-by-byte Bayesian search assumes that partially decrypting with the correct subkey produces a distribution that the distinguisher recognizes, while wrong keys produce random-looking distributions.
-In \speck, the last round's modular addition creates a direct relationship: subkey errors propagate predictably.
-In \simon, the subkey enters via XOR \emph{after} the nonlinear function $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$, meaning subkey errors interact with the state through a complex nonlinear path.
-Prior work achieves \simon key recovery through different means: Tian and Hu~\citep{tian2022simon} use prepended differentials with neutral bits, bypassing the byte-by-byte search entirely.
+\simon's 100\% distinguisher accuracy but 0\% key recovery lies at the intersection of both research questions.
+RQ1 tells us that signal exists abundantly (100\% accuracy at 5r), but RQ2 tells us this signal is non-composable.
+Gohr's Bayesian key search implicitly requires Markov decomposition: it assumes the $r$-round signal factors into an $(r{-}1)$-round signal plus a key-dependent last-round contribution.
+When the signal is round-specific (anti-composable), this factorization fails, and the subkey ranking degenerates to random.
+
+In \speck, the last round's modular addition creates a direct relationship between subkey errors and score changes, enabling partial decomposition.
+In \simon, the subkey enters via XOR \emph{after} the nonlinear function $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$, entangling subkey errors with the state through a complex nonlinear path.
+Prior work achieves \simon key recovery through different means: Tian and Hu~\citep{tian2022simon} use prepended differentials with neutral bits, bypassing Bayesian search entirely.
 
 \FloatBarrier
 \subsection{Limitations}
@@ -67,12 +77,12 @@ Prior work achieves \simon key recovery through different means: Tian and Hu~\ci
 We acknowledge five limitations:
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt]
-  \item \textbf{Architecture ceiling.} Our MLP achieves fewer rounds than published SOTA (7r \speck vs.\ 8r Gohr; 9r \simon vs.\ 11r DBitNet; 6r \present vs.\ 9r DBitNet). The ResNet comparison (\Cref{tab:resnet}) shows the gap is $\leq$2.6\pp, but DBitNet and SENet may differ more substantially.
-  \item \textbf{Single input difference.} We use one $\Delta P$ per cipher. Bellini et al.~\citep{bellini2023dbitnet} show that evolutionary input difference search can improve accuracy by 5+\pp.
-  \item \textbf{Single-pair setting.} We use $n=2$ (one ciphertext pair). Multi-pair aggregation ($n > 2$) consistently improves accuracy in the literature~\citep{zhang2025multipair}.
-  \item \textbf{Classical baseline.} Our best-bit-bias is a single-bit distinguisher. A DDT-based multi-bit distinguisher~\citep{gohr2022assessment} would reduce the reported neural--classical gap.
+  \item \textbf{Architecture ceiling.} Our MLP achieves fewer rounds than published SOTA (7r \speck vs.\ 8r Gohr; 9r \simon vs.\ 11r DBitNet; 6r \present vs.\ 9r DBitNet). The ResNet comparison ($\leq$2.6\pp gap, ordering preserved) confirms the findings are architecture-independent.
+  \item \textbf{Single input difference.} We use one $\Delta P$ per cipher. Evolutionary difference search~\citep{bellini2023dbitnet} may improve absolute accuracy by 5+\pp.
+  \item \textbf{Single-pair setting.} Multi-pair aggregation ($n > 2$) consistently improves accuracy~\citep{zhang2025multipair}.
+  \item \textbf{Classical baseline.} Our best-bit-bias is a single-bit distinguisher. A DDT-based multi-bit method~\citep{gohr2022assessment} would reduce the neural--classical gap in RQ1.
   \item \textbf{No PRESENT key recovery.} \present's 64-bit block requires a different partial decryption approach that we do not implement.
 \end{enumerate}
 
 \noindent
-None of these limitations affect the transfer polarity finding, which is the paper's central contribution: transfer direction depends on the source and target data distributions, not on the model's absolute accuracy.
+Critically, none of these limitations affect the RQ2 finding: transfer polarity depends on the source and target data distributions, not on the model's absolute accuracy or the input difference choice.

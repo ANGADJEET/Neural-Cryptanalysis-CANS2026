@@ -34,7 +34,7 @@ We retain R2\_xor\_diff across all families to preserve the controlled compariso
 Our primary architecture is a feedforward MLP: four hidden layers of sizes $[256, 128, 64, 32]$ with batch normalization after each, followed by a single sigmoid output.
 This is Gohr's simpler MLP variant~\citep{gohr2019}, deliberately chosen as a \emph{lower bound} on neural distinguisher performance.
 
-We also evaluate six additional architectures---CNN, Residual CNN, Gohr-MLP (larger), LSTM, GRU, and Siamese---on \speck at 5 rounds, as well as Gohr's depth-10 ResNet on all three ciphers (\Cref{sec:exp-ablation}).
+We also evaluate six additional architectures---CNN, Residual CNN, Gohr-MLP (larger), LSTM, GRU, and Siamese---on \speck at 5 rounds, as well as Gohr's depth-10 ResNet on all three ciphers (\Cref{sec:exp-architecture}).
 
 \subsection{Training Protocol}
 
