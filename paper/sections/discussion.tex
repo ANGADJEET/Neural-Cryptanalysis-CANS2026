@@ -1,9 +1,10 @@
 \section{Discussion}
 \label{sec:discussion}
 
+\FloatBarrier
 \subsection{What Do the Networks Learn?}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig5_saliency.png}
   \caption{Saliency map for \speck at 5 rounds.
@@ -11,7 +12,7 @@
   \label{fig:saliency}
 \end{figure}
 
-\begin{figure*}[t]
+\begin{figure*}[htbp]
   \centering
   \includegraphics[width=\textwidth]{fig6_attention.png}
   \caption{Attention interpretability for \speck (E19).
@@ -29,6 +30,7 @@ Attention-based interpretability (E19; \Cref{fig:attention}) reveals a striking 
 At 3 rounds, attention entropy is 7.1 bits (moderately focused); it rises to 9.0 bits at 5 rounds (diffuse attention over many bits), then collapses to 6.5 bits at 7 rounds.
 The interpretation: at easy rounds, the signal is concentrated in a few bits; at moderate rounds, the network recruits a broader set of features; at near-random rounds (7r, accuracy $\approx$51\%), it attends broadly but learns nothing---the low entropy at 8 rounds reflects the network giving up rather than finding signal.
 
+\FloatBarrier
 \subsection{Why Anti-Transfer?}
 
 The anti-transfer phenomenon---accuracy below 50\% when evaluating a high-round model on low-round data---demands mechanistic explanation.
@@ -50,6 +52,7 @@ We hypothesize that \simon's nonlinearity---bitwise AND between rotated copies o
 Unlike PRESENT's S-box, which achieves full diffusion within one round, \simon's Feistel structure requires multiple rounds for the AND-rotation patterns to stabilize, producing round-specific features that do not compose.
 Testing this hypothesis requires training on \simon with masked intermediate rounds, which we leave to future work.
 
+\FloatBarrier
 \subsection{SIMON Key Recovery Failure}
 
 \simon's 100\% distinguisher accuracy at 5 rounds but 0\% key recovery is the most practically informative negative result in this study.
@@ -58,6 +61,7 @@ In \speck, the last round's modular addition creates a direct relationship: subk
 In \simon, the subkey enters via XOR \emph{after} the nonlinear function $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$, meaning subkey errors interact with the state through a complex nonlinear path.
 Prior work achieves \simon key recovery through different means: Tian and Hu~\citep{tian2022simon} use prepended differentials with neutral bits, bypassing the byte-by-byte search entirely.
 
+\FloatBarrier
 \subsection{Limitations}
 
 We acknowledge five limitations:

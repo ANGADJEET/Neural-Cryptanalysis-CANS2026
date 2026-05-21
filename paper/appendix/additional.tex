@@ -1,17 +1,19 @@
 \section{Additional Results}
 \label{sec:app-additional}
 
+\FloatBarrier
 \subsection{Key Invariance (E03)}
 
 To verify that distinguishers learn cipher-structural features rather than key-specific patterns, we evaluate a trained \speck 5r model on data encrypted with permuted keys (keys with shuffled bytes).
 The model scores 50.01\% ($\pm$0.16)---indistinguishable from random---confirming that the learned features are key-invariant.
 When evaluated on the original key distribution, the same model achieves 87.10\%.
 
+\FloatBarrier
 \subsection{Robustness to Noise (E04)}
 
 We corrupt test ciphertext bits with Gaussian noise or random bitflips and measure accuracy degradation on \speck 5r.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Accuracy under input perturbation (\speck 5r, baseline: 87.10\%).}
 \label{tab:robustness}
@@ -34,11 +36,12 @@ $\sigma$ & Acc.\ (\%) & Drop & Rate & Acc.\ (\%) & Drop \\
 The network degrades gracefully under Gaussian noise ($\sigma \leq 0.10$: $<$2\pp loss) but is highly sensitive to bitflips (1\% flip rate: $-3.1$\pp).
 This asymmetry reflects the discrete, bit-level nature of the learned features.
 
+\FloatBarrier
 \subsection{Markov Depth Analysis (E05)}
 
 We train distinguishers using different numbers of intermediate round outputs as input features (``Markov depth'') to measure how much historical state information helps.
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Accuracy vs.\ Markov depth on \speck (predicting round 7 label).}
 \label{tab:markov-depth}
@@ -57,12 +60,13 @@ We train distinguishers using different numbers of intermediate round outputs as
 
 Performance saturates at depth 3 (87.3\%), consistent with the last 3 rounds containing the bulk of exploitable differential information.
 
+\FloatBarrier
 \subsection{Conditional Mutual Information (E06)}
 
 We estimate mutual information between round labels and ciphertext difference, conditioned on the previous round's output.
 Conditional MI is near-zero across all rounds ($\leq 4.5 \times 10^{-5}$ bits), confirming that round transitions approximately satisfy the Markov property---conditioning on the current round state captures all information relevant to the next round.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig7_signal_decay.png}
   \caption{Signal decay heatmap for \speck: accuracy across 7 input differences and 7 round counts (2--8).
@@ -75,9 +79,10 @@ The heatmap in \Cref{fig:signal-decay} shows a $7 \times 7$ grid of distinguishi
 All differences produce similar accuracy at the same round count, with variation $<$3\pp.
 The default difference (0x00400000) is not optimal at low rounds: 0x00100000 achieves comparable accuracy with more consistent cross-round behavior.
 
+\FloatBarrier
 \subsection{Input Difference Search (E10)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Top-5 single-bit input differences for \speck 5r.}
 \label{tab:diff-search}
@@ -98,9 +103,10 @@ The optimal single-bit difference (0x00008000, bit 15) achieves 76.2\% at 5 roun
 The ranking shows clear positional dependence: bits 14--18 (near the modular addition boundary) dominate, connecting to the carry propagation structure of SPECK's ARX operations.
 This complements Bellini et al.'s~\citep{bellini2023dbitnet} evolutionary search with a simpler exhaustive analysis over single-bit differences.
 
+\FloatBarrier
 \subsection{Generative Markov Validation (E16)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Markov vs.\ memory VAE prediction on \speck round transitions.
          Ratio $\approx 1.0$ indicates Markov property holds.}
@@ -119,7 +125,7 @@ This complements Bellini et al.'s~\citep{bellini2023dbitnet} evolutionary search
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig8_vae_prediction.png}
   \caption{Generative Markov validation (E16).
@@ -128,7 +134,7 @@ This complements Bellini et al.'s~\citep{bellini2023dbitnet} evolutionary search
   \label{fig:vae-prediction}
 \end{figure}
 
-\begin{figure*}[t]
+\begin{figure*}[htbp]
   \centering
   \includegraphics[width=\textwidth]{fig9_vae_latent.png}
   \caption{VAE latent space visualizations for \speck across rounds 1--6.
@@ -144,6 +150,7 @@ We note this honestly: the claim ``Markov ratio $1.000 \pm 0.004$'' in the origi
 
 The VAE latent space (\Cref{fig:vae-latent}) provides a complementary visualization: at early rounds, the cipher and random distributions occupy distinct regions of the learned manifold; by round 6, they merge completely, consistent with the distinguisher's accuracy collapsing to 50\%.
 
+\FloatBarrier
 \subsection{RL-Based Differential Search (E18)}
 
 We train a reinforcement learning agent to discover good input differences for \speck.
@@ -151,9 +158,10 @@ At 5 rounds, RL fails: the best RL-discovered difference achieves 50.6\% (vs.\ 5
 At 3 rounds, RL shows partial success: one seed discovers 0x00102000 achieving 85.0\% (vs.\ 86.6\% for the known difference), but the other seeds find only random-quality differences.
 The RL approach's reward signal becomes too noisy at higher rounds for the agent to converge, suggesting that gradient-free search for input differences requires substantially more samples than gradient-based training of the distinguisher itself.
 
+\FloatBarrier
 \subsection{SIMON Cross-Round Transfer (Full Table)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Full cross-round transfer for \simon (source: 6r, accuracy 98.1\%).}
 \label{tab:simon-transfer-full}

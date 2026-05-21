@@ -1,6 +1,7 @@
 \section{Experiments and Results}
 \label{sec:experiments}
 
+\FloatBarrier
 \subsection{Setup}
 
 We evaluate MLP distinguishers on three ciphers across the following round ranges: \speck (3--8), \simon (4--11), \present (2--7).
@@ -12,10 +13,11 @@ Our experimental setting is 2-1-CT-R in the classification of~\citet{bellini2023
 We compare against (i)~our best-bit-bias classical distinguisher, (ii)~Gohr's published ResNet numbers on \speck (92.4\% at 5r, 78.8\% at 6r, 61.6\% at 7r, 51.4\% at 8r)~\citep{gohr2019}, and (iii)~our own ResNet trained under identical conditions.
 
 % ─────────────────────────────────────────────────────────────────────────
+\FloatBarrier
 \subsection{Cross-Family Vulnerability}
 \label{sec:exp-vulnerability}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Neural distinguisher accuracy (\%) vs.\ round count.
          Values are mean $\pm$ std over 3--5 seeds.
@@ -40,7 +42,7 @@ We compare against (i)~our best-bit-bias classical distinguisher, (ii)~Gohr's pu
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig1_baseline_all_ciphers.pdf}
   \caption{Distinguisher accuracy vs.\ round count for all three cipher families.
@@ -58,10 +60,11 @@ The ordering is consistent with the structural properties of each family.
 \present's SPN design, with a bit permutation providing full diffusion in a single round, resists neural analysis most effectively.
 
 % ─────────────────────────────────────────────────────────────────────────
+\FloatBarrier
 \subsection{Neural vs.\ Classical Gap}
 \label{sec:exp-classical}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Neural vs.\ classical (best-bit-bias) accuracy (\%) at selected rounds.
          Gap is in percentage points (pp).
@@ -92,7 +95,7 @@ The ordering is consistent with the structural properties of each family.
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig2_neural_vs_classical.pdf}
   \caption{Neural (MLP) vs.\ classical (best-bit-bias) accuracy across rounds.
@@ -100,7 +103,7 @@ The ordering is consistent with the structural properties of each family.
   \label{fig:classical}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig4_neural_advantage.pdf}
   \caption{Neural advantage (neural $-$ classical, in pp) by cipher and round.
@@ -116,10 +119,11 @@ Gohr's ResNet, shown for \speck, substantially outperforms our MLP: the ResNet a
 This gap is expected and intentional---our contribution is the cross-family comparison, not depth maximization.
 
 % ─────────────────────────────────────────────────────────────────────────
+\FloatBarrier
 \subsection{Transfer and Anti-Transfer}
 \label{sec:exp-transfer}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Cross-round and cross-cipher transfer results.
          Source: \speck 5r, \simon 6r, \present 4r.
@@ -153,7 +157,7 @@ This gap is expected and intentional---our contribution is the cross-family comp
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig3_transfer_comparison.pdf}
   \caption{Transfer polarity comparison.
@@ -186,10 +190,11 @@ SPN features are hierarchical: a model that can detect 4-round patterns triviall
 ARX and Feistel features are round-specific: the patterns at 5 rounds not only differ from those at 3 rounds, they are \emph{negatively correlated} with the 3-round decision boundary.
 
 % ─────────────────────────────────────────────────────────────────────────
+\FloatBarrier
 \subsection{Key Recovery}
 \label{sec:exp-key-recovery}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Bayesian key recovery results (5 seeds, 20K pairs per trial).
          Rank is out of 256 candidates per byte.}
@@ -213,6 +218,7 @@ Mean low-byte rank is 122.8/256---indistinguishable from random.
 This negative result is structurally informative: \simon's Feistel round function applies the subkey through XOR with a nonlinear function of the state ($f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$), breaking the direct subkey--score relationship that Gohr's byte-by-byte search exploits in SPECK's modular addition.
 
 % ─────────────────────────────────────────────────────────────────────────
+\FloatBarrier
 \subsection{Ablation Summary}
 \label{sec:exp-ablation}
 
@@ -221,7 +227,7 @@ Seven architectures trained on \speck at 5 rounds produce accuracies in [86.8\%,
 The MLP (88.7\%) slightly outperforms the CNN (87.9\%) and LSTM (87.6\%); the Siamese network (86.8\%) is lowest but still within statistical noise.
 Full results in \Cref{sec:app-ablations}.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Architecture comparison on \speck 5r (mean accuracy over 5 seeds).}
 \label{tab:arch-comparison}
@@ -246,7 +252,7 @@ On \speck, the gap is $\leq$1.1\pp across all rounds; on \simon, $\leq$0.7\pp.
 Notably, on \present at 3--4 rounds the MLP \emph{matches or exceeds} ResNet.
 The vulnerability ordering (\simon $\gg$ \speck $>$ \present) is preserved under both architectures, confirming it is intrinsic to cipher structure (\Cref{tab:resnet}).
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{ResNet vs.\ MLP accuracy (\%) under identical training conditions.
          Gap = ResNet $-$ MLP.}

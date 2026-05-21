@@ -1,9 +1,10 @@
 \section{Full Ablation Tables}
 \label{sec:app-ablations}
 
+\FloatBarrier
 \subsection{Input Representation Comparison (E02)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Representation comparison on \speck 5r (5 seeds).
          R2\_xor\_diff is our default.}
@@ -22,7 +23,7 @@ R5\_word\_level & $59.80 \pm 1.60$ & 6 \\
 \end{tabular}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Representation comparison across cipher families.
          R2\_xor\_diff is optimal for SPECK and PRESENT but not SIMON.}
@@ -45,9 +46,10 @@ Key finding: R2\_xor\_diff is not universally optimal.
 For \simon, raw and bit-sliced representations outperform xor-diff by 4.3\pp, likely because \simon's AND-rotation nonlinearity creates features better captured by raw bit patterns than by XOR differences.
 We retain R2\_xor\_diff across families for controlled comparison.
 
+\FloatBarrier
 \subsection{Supplementary Representations (E02 Supplement)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Supplementary representation variants on \speck 5r (5 seeds).}
 \label{tab:repr-supplement}
@@ -67,9 +69,10 @@ R9\_mask\_only     & $84.71 \pm 0.61$  & Mask-augmented \\
 R7\_sequential (100\%) provides all intermediate round outputs and serves as a white-box sanity check.
 R6\_joint\_pc (99.98\%) includes plaintext bits, confirming that plaintext access trivializes the task.
 
+\FloatBarrier
 \subsection{Data Efficiency (E14)}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
 \caption{Accuracy vs.\ training set size on \speck 5r.}
 \label{tab:data-efficiency}
@@ -91,6 +94,7 @@ R6\_joint\_pc (99.98\%) includes plaintext bits, confirming that plaintext acces
 Returns diminish beyond 100K samples: doubling from 500K to 1M yields only 1.05\pp.
 At 1K samples the MLP already achieves 74.5\%, suggesting neural distinguishers are viable even in data-constrained settings.
 
+\FloatBarrier
 \subsection{ResNet vs.\ MLP: Full Comparison}
 
 See \Cref{tab:resnet} in the main text.
