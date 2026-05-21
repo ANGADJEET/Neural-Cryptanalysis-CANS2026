@@ -5,40 +5,38 @@ Lightweight block ciphers protect billions of IoT sensors, RFID tags, and embedd
 The three dominant design paradigms---ARX (Add-Rotate-XOR), Feistel networks, and Substitution-Permutation Networks (SPN)---each make distinct structural trade-offs between diffusion speed, parallelism, and hardware cost.
 Whether one paradigm is systematically more vulnerable to a given class of attack than another is a question with direct implications for cipher selection in constrained environments.
 
-Classical differential cryptanalysis~\citep{biham1991differential} answers this question by exhaustive search over differential trails, an approach that becomes computationally intractable as round counts grow.
-Automated methods based on MILP~\citep{mouha2012milp} extend the reach of classical analysis, but they optimize within a fixed algebraic framework and cannot discover features that fall outside the differential distribution table (DDT).
+Classical differential cryptanalysis~\citep{biham1991differential} answers this by exhaustive search over differential trails, an approach that becomes intractable as round counts grow.
+Automated methods based on MILP~\citep{mouha2012milp} extend the reach of classical analysis, but they optimize within a fixed algebraic framework and cannot discover features outside the differential distribution table (DDT).
 
 In 2019, Gohr~\citep{gohr2019} demonstrated that a residual neural network, trained as a binary classifier on ciphertext pairs, could distinguish 8-round \speck from random---surpassing the best known classical distinguisher.
-Since then, the field has expanded rapidly: a recent systematic survey~\citep{gerault2024sok} catalogs 66 peer-reviewed papers that train neural differential distinguishers across 24 primitives, using 15+ distinct architectures and data volumes spanning five orders of magnitude.
+Since then, the field has expanded rapidly: a recent survey~\citep{gerault2024sok} catalogs 66 peer-reviewed papers training neural differential distinguishers across 24 primitives with 15+ architectures.
 Yet despite this breadth, two foundational questions remain unanswered.
 
-\textbf{RQ1 (Representation):} \emph{Where does the distinguishing signal reside in observable ciphertext data?}
-Prior work demonstrates that neural distinguishers outperform classical methods, but does not characterize \emph{where} in the data the signal lives---which bits, which representation, at what depth---or whether the signal is a property of the model or the cipher.
-Answering RQ1 requires localizing signal across input representations, bit positions, cipher families, and architectures under controlled conditions.
+The first is a question of \textbf{representation}: where does the distinguishing signal actually reside in observable ciphertext data?
+Prior work demonstrates that neural distinguishers outperform classical methods, but does not characterize \emph{where} the signal lives---which bits, which input encoding, at what round depth---or whether the signal is a property of the model or of the cipher itself.
 
-\textbf{RQ2 (Markov):} \emph{Does the distinguishing signal compose across rounds in a memoryless fashion?}
-Classical differential cryptanalysis assumes that round functions behave as independent Markov chains: multi-round probabilities factor as products of single-round probabilities~\citep{biham1991differential}.
-If neural distinguishers learn the same kind of features, their predictions should transfer hierarchically across round counts (a model that distinguishes $r$ rounds should also distinguish $r' < r$ rounds).
-Violations of this assumption---particularly \emph{anti-transfer}, where accuracy drops \emph{below} 50\%---would reveal that neural features are fundamentally non-composable and round-specific.
+The second is a question of \textbf{compositionality}: does the learned signal obey the Markovian assumption that underpins classical differential analysis?
+If neural distinguishers learn the same kind of features as classical methods, their predictions should transfer hierarchically across round counts---a model trained at $r$ rounds should also succeed at $r' < r$ rounds.
+Violations of this assumption, particularly \emph{anti-transfer} where accuracy drops \emph{below} 50\%, would reveal that neural features are fundamentally non-composable and round-specific.
 
-Our key insight is that \emph{transfer polarity}---whether a distinguisher trained at one round count helps or hurts at another---is a direct empirical test of Markov composability.
+Our key insight is that \emph{transfer polarity}---whether a distinguisher trained at one round count helps or hurts at another---serves as a direct empirical test of Markovian composability.
 Gohr et al.~\citep{gohr2022assessment} proved that SPN and Feistel distinguishers can only learn differential features under independent round keys, while ARX distinguishers learn additional non-differential features.
 If SPN features are purely differential, they should compose hierarchically (positive transfer); if ARX features include non-differential components, they may be round-specific (anti-transfer).
 Our experiments confirm exactly this prediction and extend it to Feistel ciphers, where we observe unexpected anti-transfer.
 
-We make the following contributions, organized by research question:
+We make the following contributions, organized around these two questions:
 
 \begin{enumerate}[leftmargin=*,itemsep=2pt]
-  \item \textbf{RQ1---Signal localization.}
+  \item \textbf{Signal localization.}
   \begin{itemize}[itemsep=1pt,topsep=2pt]
     \item A cross-family vulnerability ordering: \simon is distinguishable 2--3 rounds deeper than \speck or \present (\Cref{sec:exp-vulnerability}), with all seven architectures agreeing within 2\pp (\Cref{sec:exp-architecture}).
-    \item Saliency and attention analysis localizing signal to specific XOR-difference bits (\Cref{sec:discussion-rq1}).
-    \item Neural distinguishers outperform the best single-bit classical baseline by 15--37\pp, confirming multi-bit signal that classical methods miss (\Cref{sec:exp-classical}).
+    \item Saliency and attention analysis identifying the specific XOR-difference bits that carry the signal (\Cref{sec:discussion-representation}).
+    \item A 15--37\pp neural advantage over single-bit classical baselines, confirming multi-bit signal invisible to classical analysis (\Cref{sec:exp-classical}).
   \end{itemize}
-  \item \textbf{RQ2---Markov violation.}
+  \item \textbf{Compositional structure.}
   \begin{itemize}[itemsep=1pt,topsep=2pt]
     \item Transfer polarity is family-dependent: \speck (ARX) and \simon (Feistel) exhibit \emph{anti-transfer} ($\leq$48.6\%, $p < 10^{-5}$), while \present (SPN) exhibits \emph{positive transfer} ($\geq$96.9\%, $p < 10^{-6}$)~(\Cref{sec:exp-transfer}). This is the first demonstration of below-chance transfer in neural cryptanalysis.
-    \item VAE-based Markov validation shows the memoryless assumption holds through round 4 but breaks at rounds 5--6 (\Cref{sec:app-additional}).
+    \item VAE-based Markov validation confirms that the cipher's differential propagation \emph{is} memoryless (ratio $\approx 1.0$ at all rounds)---yet neural features still anti-compose, demonstrating that the networks learn round-specific structure beyond the Markovian differential (\Cref{sec:app-additional}).
     \item Key recovery fails on \simon despite 100\% distinguisher accuracy, revealing that non-composable signal cannot support Bayesian subkey search (\Cref{sec:exp-key-recovery}).
   \end{itemize}
 \end{enumerate}
@@ -46,6 +44,6 @@ We make the following contributions, organized by research question:
 \Cref{sec:related} surveys related work.
 \Cref{sec:problem} formalizes the threat model and notation.
 \Cref{sec:method} describes the experimental methodology.
-\Cref{sec:experiments} presents the main results organized by research question.
+\Cref{sec:experiments} presents the main results, organized by these two questions.
 \Cref{sec:discussion} interprets the findings.
 \Cref{sec:conclusion} concludes.

@@ -13,18 +13,18 @@ Our experimental setting is 2-1-CT-R in the classification of~\citet{bellini2023
 We compare against (i)~our best-bit-bias classical distinguisher, (ii)~Gohr's published ResNet numbers on \speck (92.4\% at 5r, 78.8\% at 6r, 61.6\% at 7r, 51.4\% at 8r)~\citep{gohr2019}, and (iii)~our own ResNet trained under identical conditions.
 
 % ═══════════════════════════════════════════════════════════════════════════
-% RQ1: WHERE DOES THE SIGNAL LIVE?
+% REPRESENTATION: WHERE DOES THE SIGNAL LIVE?
 % ═══════════════════════════════════════════════════════════════════════════
 
 \FloatBarrier
-\subsection{RQ1: Where Does the Signal Reside?}
-\label{sec:exp-rq1}
+\subsection{Locating the Signal}
+\label{sec:exp-representation}
 
-We address RQ1 through three complementary experiments: cross-family vulnerability profiling (signal depth), neural vs.\ classical comparison (signal dimensionality), and architecture independence (signal source).
+We first characterize \emph{where} the distinguishing signal resides: at what round depth, in which data dimensions, and whether it depends on the model or the cipher.
 
-% ── §5.2.1 Cross-Family Vulnerability ──────────────────────────────────
+% ── Cross-Family Vulnerability ─────────────────────────────────────────
 \FloatBarrier
-\subsubsection{Cross-Family Vulnerability}
+\subsubsection{Signal Depth Across Cipher Families}
 \label{sec:exp-vulnerability}
 
 \begin{table}[htbp]
@@ -65,14 +65,13 @@ We address RQ1 through three complementary experiments: cross-family vulnerabili
 \simon retains distinguishable signal through 9 rounds (52.56\%, CI: [52.30, 52.71]), while \speck saturates at 7 rounds (50.76\%) and \present at 6 rounds (52.55\%, CI: [52.07, 53.04]).
 As fractions of full cipher depth, signal persists through 28\% of \simon, 32\% of \speck, and 19\% of \present.
 
-The ordering is consistent with each family's diffusion rate.
+The ordering reflects each family's diffusion architecture.
 \simon's Feistel structure processes only half the state per round, requiring more rounds to destroy signal.
 \present's SPN design achieves full diffusion in a single round, eliminating signal most rapidly.
-This answers the ``at what depth'' component of RQ1: signal depth is governed by the cipher's diffusion architecture.
 
-% ── §5.2.2 Neural vs Classical Gap ─────────────────────────────────────
+% ── Neural vs Classical Gap ────────────────────────────────────────────
 \FloatBarrier
-\subsubsection{Neural vs.\ Classical Gap: Multi-Bit Signal}
+\subsubsection{Multi-Bit Signal: The Neural--Classical Gap}
 \label{sec:exp-classical}
 
 \begin{table}[htbp]
@@ -110,7 +109,7 @@ This answers the ``at what depth'' component of RQ1: signal depth is governed by
   \centering
   \includegraphics[width=\columnwidth]{fig2_neural_vs_classical.pdf}
   \caption{Neural (MLP) vs.\ classical (best-bit-bias) accuracy across rounds.
-  The neural advantage is largest at intermediate rounds, where multi-bit correlations are strongest, and collapses at the boundary.}
+  The neural advantage peaks at intermediate rounds, where multi-bit correlations are strongest, and vanishes at the boundary.}
   \label{fig:classical}
 \end{figure}
 
@@ -123,15 +122,15 @@ This answers the ``at what depth'' component of RQ1: signal depth is governed by
 \end{figure}
 
 The neural MLP outperforms the best single-bit classical distinguisher by 4--37\pp in the exploitable range (\Cref{tab:classical,fig:classical}).
-\present at 4 rounds shows the largest gap (+36.9\pp, \Cref{fig:advantage}), indicating that the SPN's high diffusion rate concentrates signal into \emph{multi-bit correlations} invisible to any single-bit analysis.
-This answers the ``which bits'' component of RQ1: signal is distributed across multiple difference bits and requires a nonlinear classifier to capture.
+\present at 4 rounds shows the largest gap (+36.9\pp, \Cref{fig:advantage}), indicating that the SPN's high diffusion rate concentrates signal into \emph{multi-bit correlations} invisible to any single-bit method.
+This tells us \emph{what kind} of signal the network extracts: distributed, nonlinear, and inherently multi-dimensional.
 
 Our classical baseline is deliberately weak (single-bit).
-Gohr's ResNet substantially outperforms our MLP (61.2\% vs.\ 50.8\% at \speck 7r), but this gap is expected---our contribution is signal characterization, not depth maximization.
+Gohr's ResNet substantially outperforms our MLP (61.2\% vs.\ 50.8\% at \speck 7r), but this gap is expected---our goal is signal characterization, not depth maximization.
 
-% ── §5.2.3 Architecture Independence ───────────────────────────────────
+% ── Architecture Independence ──────────────────────────────────────────
 \FloatBarrier
-\subsubsection{Architecture Independence: Signal Is in the Data}
+\subsubsection{Architecture Independence: Signal Lives in the Data}
 \label{sec:exp-architecture}
 
 \begin{table}[htbp]
@@ -187,23 +186,23 @@ Seven architectures trained on \speck at 5 rounds produce accuracies in [86.8\%,
 Gohr's depth-10 ResNet improves over MLP by at most 2.64\pp (\present 5r), and the vulnerability ordering (\simon $\gg$ \speck $>$ \present) is preserved under both architectures (\Cref{tab:resnet}).
 Notably, on \present at 3--4 rounds the MLP \emph{matches or exceeds} ResNet.
 
-This is the definitive answer to the ``signal source'' component of RQ1: \textbf{the signal resides in the data, not in the model.}
+The implication is decisive: \textbf{the signal resides in the data, not in the model.}
 Architecture choice modulates extraction efficiency by $\leq$2.6\pp but does not change what is extractable.
 
 % ═══════════════════════════════════════════════════════════════════════════
-% RQ2: DOES THE SIGNAL OBEY MARKOV?
+% COMPOSITIONALITY: DOES THE SIGNAL OBEY MARKOV?
 % ═══════════════════════════════════════════════════════════════════════════
 
 \FloatBarrier
-\subsection{RQ2: Does the Signal Compose Across Rounds?}
-\label{sec:exp-rq2}
+\subsection{Testing the Markovian Assumption}
+\label{sec:exp-markov}
 
-Classical differential cryptanalysis assumes Markov composition: multi-round differential probabilities factor as products of per-round probabilities, so features valid at $r$ rounds remain valid at $r' < r$.
-We test this assumption through transfer experiments and key recovery.
+Classical differential cryptanalysis rests on the Markovian assumption: multi-round differential probabilities factor as products of per-round probabilities, so features valid at $r$ rounds remain valid at $r' < r$.
+We test whether neural distinguishers respect this assumption through two complementary experiments: cross-round transfer and key recovery.
 
-% ── §5.3.1 Transfer and Anti-Transfer ──────────────────────────────────
+% ── Transfer and Anti-Transfer ─────────────────────────────────────────
 \FloatBarrier
-\subsubsection{Transfer Polarity: The Markov Test}
+\subsubsection{Transfer Polarity as a Compositionality Test}
 \label{sec:exp-transfer}
 
 \begin{table}[htbp]
@@ -243,31 +242,31 @@ We test this assumption through transfer experiments and key recovery.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{fig3_transfer_comparison.pdf}
-  \caption{Transfer polarity as a Markov composability test.
-  SPN (\present) features compose hierarchically: positive transfer confirms Markov-like behavior.
-  ARX (\speck) and Feistel (\simon) features anti-compose: accuracy \emph{below} 50\% violates the Markov assumption.
+  \caption{Transfer polarity as a compositionality test.
+  SPN (\present) features compose hierarchically: positive transfer confirms Markovian behavior.
+  ARX (\speck) and Feistel (\simon) features anti-compose: accuracy \emph{below} 50\% directly violates the memoryless assumption.
   Error bars: $\pm$1 std over 5 seeds.}
   \label{fig:transfer}
 \end{figure}
 
 This is the central result of the paper.
-\Cref{tab:transfer,fig:transfer} show that Markov composability is family-dependent:
+\Cref{tab:transfer,fig:transfer} show that composability is family-dependent:
 
-\paragraph{SPN (PRESENT): Markov-composable.}
+\paragraph{SPN (PRESENT): composable.}
 A 4-round \present distinguisher scores 99.1\% on 2-round data and 96.9\% on 3-round data ($p < 10^{-6}$).
-Features learned at higher rounds subsume those at lower rounds---consistent with Markov composition and Gohr et al.'s proof that SPN distinguishers learn only DDT features~\citep{gohr2022assessment}.
+Features learned at higher rounds subsume those at lower rounds---exactly the behavior predicted by Markovian composition and Gohr et al.'s proof that SPN distinguishers learn only DDT features~\citep{gohr2022assessment}.
 
-\paragraph{ARX (SPECK): Markov-violating.}
+\paragraph{ARX (SPECK): non-composable.}
 A 5-round \speck distinguisher evaluated on 3-round data scores 45.5\%---4.5\pp \emph{below} random chance ($p < 10^{-8}$).
 The network has learned features that are not merely irrelevant at fewer rounds, but \emph{negatively correlated} with the lower-round decision boundary.
-This is direct evidence of non-Markov, round-specific signal.
+This is a direct violation of the Markovian assumption.
 
-\paragraph{Feistel (SIMON): unexpectedly Markov-violating.}
+\paragraph{Feistel (SIMON): unexpectedly non-composable.}
 A 6-round \simon distinguisher on 4-round data scores 48.6\% ($p < 10^{-5}$).
-Gohr et al.~\citep{gohr2022assessment} proved that Feistel distinguishers should learn only differential features, predicting Markov composition.
-The observed anti-transfer contradicts this prediction, suggesting \simon's AND-rotation nonlinearity creates round-dependent differential patterns that disrupt hierarchical composition (\Cref{sec:discussion-rq2}).
+Gohr et al.~\citep{gohr2022assessment} proved that Feistel distinguishers should learn only differential features, predicting Markovian composition.
+The observed anti-transfer contradicts this prediction, suggesting \simon's AND-rotation nonlinearity creates round-dependent differential patterns that disrupt hierarchical composition (\Cref{sec:discussion-compositionality}).
 
-% ── §5.3.2 Key Recovery ────────────────────────────────────────────────
+% ── Key Recovery ───────────────────────────────────────────────────────
 \FloatBarrier
 \subsubsection{Key Recovery as a Compositional Test}
 \label{sec:exp-key-recovery}
@@ -288,27 +287,27 @@ The observed anti-transfer contradicts this prediction, suggesting \simon's AND-
 \end{tabular}
 \end{table}
 
-Key recovery provides a second, independent test of Markov composition.
-Gohr's Bayesian approach~\citep{gohr2019} trains a distinguisher at $r{-}1$ rounds and searches the last-round subkey space, implicitly assuming that the $r$-round signal decomposes into an $(r{-}1)$-round signal plus a key-dependent transformation.
+Key recovery provides a second, independent test of compositionality.
+Gohr's Bayesian approach~\citep{gohr2019} trains a distinguisher at $r{-}1$ rounds and searches the last-round subkey space, implicitly assuming that the $r$-round signal decomposes into an $(r{-}1)$-round component plus a key-dependent transformation---a Markovian factorization.
 
 \speck key recovery succeeds: 40\% exact recovery at 5 total rounds (\Cref{tab:key_recovery}).
-The signal composes well enough across the last round to support Bayesian scoring---consistent with ARX signal being round-specific but \emph{locally} composable (adjacent rounds share partial features).
+The signal composes well enough across the last round to support Bayesian scoring---consistent with ARX signal being round-specific but \emph{locally} composable between adjacent rounds.
 
 \simon key recovery fails completely despite 100\% distinguisher accuracy.
 Mean low-byte rank is 122.8/256---indistinguishable from random.
-This failure is directly predicted by RQ2: \simon's non-composable features cannot support the implicit Markov assumption in Bayesian subkey search.
+This failure is a direct practical consequence of non-composability: the signal cannot be factored across the last round, so Bayesian scoring degenerates.
 The structural cause is that \simon's subkey enters via XOR \emph{after} the nonlinear function $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$, entangling subkey errors with the state through a complex nonlinear path.
 
 % ═══════════════════════════════════════════════════════════════════════════
 \FloatBarrier
-\subsection{Summary of Findings}
+\subsection{Summary}
 \label{sec:exp-summary}
 
-\paragraph{RQ1 (Representation).}
-Signal resides in multi-bit XOR-difference channels, persists to family-specific depths (\simon $\gg$ \speck $>$ \present), and is architecture-independent ($\leq$2.6\pp gap across 7 models + ResNet).
+\paragraph{Representation.}
+The distinguishing signal resides in multi-bit XOR-difference channels, persists to family-specific depths (\simon $\gg$ \speck $>$ \present), and is architecture-independent ($\leq$2.6\pp gap across 7 models + ResNet).
 It is a property of cipher structure, not model capacity.
 
-\paragraph{RQ2 (Markov).}
+\paragraph{Compositionality.}
 Signal composition is family-dependent.
-SPN features compose hierarchically (positive transfer, successful decomposition), consistent with the Markov assumption.
-ARX and Feistel features are round-specific and anti-compose (below-chance transfer, key recovery failure), violating the Markov assumption.
+SPN features compose hierarchically (positive transfer, successful key recovery decomposition), consistent with the Markovian assumption.
+ARX and Feistel features are round-specific and anti-compose (below-chance transfer, key recovery failure), violating it.
