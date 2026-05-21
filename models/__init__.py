@@ -5,6 +5,8 @@ from .siamese import SiameseNetwork
 from .rnn import CryptoLSTM, CryptoGRU
 from .mine import MINE, MutualInfoEstimator
 from .gohr_resnet import GohrResNet
+from .dbitnet import DBitNet
+from .senet import SENet
 
 __all__ = [
     'MLP',
@@ -17,6 +19,8 @@ __all__ = [
     'MINE',
     'MutualInfoEstimator',
     'GohrResNet',
+    'DBitNet',
+    'SENet',
 ]
 
 
@@ -31,9 +35,12 @@ def get_model(name: str, input_dim: int, **kwargs):
         'gru': CryptoGRU,
         'mine': MINE,
         'gohr_resnet': GohrResNet,
+        'dbitnet': DBitNet,
+        'senet': SENet,
     }
     
     if name.lower() not in models:
         raise ValueError(f"Unknown model: {name}. Available: {list(models.keys())}")
     
     return models[name.lower()](input_dim=input_dim, **kwargs)
+

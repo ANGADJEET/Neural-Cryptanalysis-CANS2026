@@ -66,7 +66,9 @@ def main():
     add_common_args(parser)
     parser.add_argument('--rounds', type=int, default=8,
                         help='Max rounds to analyze')
-    parser.add_argument('--mine-epochs', type=int, default=50)
+    parser.add_argument('--mine-epochs', type=int, default=200)
+    parser.add_argument('--skip-calibration', action='store_true',
+                        help='Skip MINE calibration check (not recommended)')
     args = parser.parse_args()
     if args.output_dir is None:
         args.output_dir = './results/e06_conditional_mi'
@@ -81,6 +83,26 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     set_seed(args.seed)
+
+    # ── MINE Calibration Positive Control ─────────────────────────────
+    # Before trusting MINE on cipher data (where true MI is unknown),
+    # verify it works on data with known MI.
+    if not args.skip_calibration:
+        print(f"\n{'━' * 50}")
+        print("  Calibration: MINE positive control (ρ=0.7 Gaussians)")
+        print(f"{'━' * 50}")
+        from models.mine import MutualInfoEstimator
+        calibrator = MutualInfoEstimator(
+            input_dim=1, device=device
+        )
+        cal_result = calibrator.validate_calibration(
+            rho=0.7, n_epochs=args.mine_epochs, verbose=True
+        )
+        if not cal_result['calibrated']:
+            print("  ⚠ WARNING: MINE failed calibration. Results may be unreliable.")
+            print("  Consider increasing --mine-epochs or checking GPU availability.")
+    else:
+        cal_result = {'skipped': True}
 
     n_rounds = min(args.rounds, cipher.max_rounds)
     round_diffs, labels = compute_round_diffs(
@@ -164,6 +186,8 @@ def main():
         'marginal_mi': {str(k): v for k, v in marginal_mi.items()},
         'conditional_mi': {str(k): v for k, v in conditional_mi.items()},
         'markov_gaps': {str(k): v for k, v in markov_gaps.items()},
+        'mine_calibration': cal_result,
+        'mine_epochs': args.mine_epochs,
     }
     save_results(results, str(output_dir), f'e06_{args.cipher}_results.json')
 

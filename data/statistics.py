@@ -173,3 +173,119 @@ def estimate_bias(
     
     return biases, np.max(biases)
 
+
+def compute_classical_multibit_accuracy(
+    cipher,
+    diff_in: int,
+    n_rounds: int,
+    n_samples: int = 100000,
+    n_keys: int = 5,
+    max_k: int = 3,
+) -> dict:
+    """Multi-bit classical distinguisher using XOR combinations.
+    
+    For each k in {1, 2, ..., max_k}, finds the best k-bit XOR combination
+    that maximizes distinguishing accuracy.
+    
+    k=1: Same as best-bit-bias — O(block_size) search.
+    k=2: Enumerate all (block_size choose 2) pairs — O(block_size^2) search.
+    k=3: Pre-select top-20 bits by individual bias, then enumerate
+         (20 choose 3) = 1140 triples — tractable even for 64-bit blocks.
+    
+    Returns dict mapping k -> {'accuracy': float, 'best_bits': list}.
+    """
+    from itertools import combinations
+    
+    results = {}
+    block_size = cipher.block_size
+    
+    for k in range(1, max_k + 1):
+        key_accs = []
+        best_bits_across_keys = None
+        best_acc_across_keys = 0.5
+        
+        for key_idx in range(n_keys):
+            key = cipher.random_key()
+            half = n_samples // 2
+            
+            # Positive: real differential pairs
+            P = cipher.random_plaintexts(half)
+            C = cipher.encrypt(P, n_rounds, key)
+            C_prime = cipher.encrypt((P ^ diff_in).astype(P.dtype), n_rounds, key)
+            diff_pos = C ^ C_prime
+            
+            # Negative: independent random pairs
+            Q1 = cipher.random_plaintexts(half)
+            Q2 = cipher.random_plaintexts(half)
+            diff_neg = cipher.encrypt(Q1, n_rounds, key) ^ cipher.encrypt(Q2, n_rounds, key)
+            
+            # Extract individual bit arrays for fast XOR combination
+            pos_bits = np.zeros((half, block_size), dtype=np.uint8)
+            neg_bits = np.zeros((half, block_size), dtype=np.uint8)
+            for b in range(block_size):
+                pos_bits[:, b] = (diff_pos >> b) & 1
+                neg_bits[:, b] = (diff_neg >> b) & 1
+            
+            # Determine which bit indices to search
+            if k == 1:
+                candidates = [(b,) for b in range(block_size)]
+            elif k == 2:
+                candidates = list(combinations(range(block_size), 2))
+            else:
+                # For k>=3, pre-select top-20 bits by individual bias
+                individual_biases = np.zeros(block_size)
+                for b in range(block_size):
+                    pos_mean = pos_bits[:, b].mean()
+                    neg_mean = neg_bits[:, b].mean()
+                    individual_biases[b] = abs(pos_mean - neg_mean)
+                top_bits = np.argsort(individual_biases)[-20:]
+                candidates = list(combinations(top_bits, k))
+            
+            best_acc = 0.5
+            best_combo = None
+            
+            for combo in candidates:
+                # Compute XOR of the selected bits
+                pos_xor = pos_bits[:, combo[0]].copy()
+                neg_xor = neg_bits[:, combo[0]].copy()
+                for b in combo[1:]:
+                    pos_xor ^= pos_bits[:, b]
+                    neg_xor ^= neg_bits[:, b]
+                
+                pos_mean = pos_xor.astype(np.float32).mean()
+                neg_mean = neg_xor.astype(np.float32).mean()
+                
+                if abs(pos_mean - neg_mean) < 0.001:
+                    continue
+                
+                # Threshold-based classification
+                threshold = (pos_mean + neg_mean) / 2
+                all_xor = np.concatenate([pos_xor, neg_xor])
+                all_labels = np.concatenate([np.ones(half), np.zeros(half)])
+                
+                if pos_mean > neg_mean:
+                    preds = (all_xor.astype(np.float32) > threshold).astype(float)
+                else:
+                    preds = (all_xor.astype(np.float32) < threshold).astype(float)
+                
+                acc = float(np.mean(preds == all_labels))
+                if acc > best_acc:
+                    best_acc = acc
+                    best_combo = combo
+            
+            key_accs.append(best_acc)
+            if best_acc > best_acc_across_keys:
+                best_acc_across_keys = best_acc
+                best_bits_across_keys = best_combo
+        
+        mean_acc = float(np.mean(key_accs))
+        results[k] = {
+            'accuracy': mean_acc,
+            'std': float(np.std(key_accs)),
+            'best_bits': list(best_bits_across_keys) if best_bits_across_keys else [],
+            'per_key_accs': [float(a) for a in key_accs],
+        }
+    
+    return results
+
+

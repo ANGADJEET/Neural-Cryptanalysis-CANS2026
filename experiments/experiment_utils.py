@@ -22,7 +22,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--seed', type=int, default=42, help='Base random seed')
     parser.add_argument('--n-seeds', type=int, default=5, help='Number of seeds to run')
     parser.add_argument('--cipher', default='speck32',
-                        choices=['speck32', 'simon32', 'present'])
+                        choices=['speck32', 'simon32', 'present', 'simon32_irk'])
     parser.add_argument('--samples', type=int, default=500_000)
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--batch-size', type=int, default=5000)
