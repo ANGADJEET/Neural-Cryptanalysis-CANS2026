@@ -1,4 +1,27 @@
 {
+  "mine_positive_control": {
+    "independent": {
+      "mi": 0.07721725463867189,
+      "expected": 0.0
+    },
+    "deterministic": {
+      "mi": 0.6897742673754692,
+      "expected": 0.693
+    },
+    "noisy": {
+      "mi": 0.2269652269035578,
+      "expected_range": [
+        0.05,
+        0.5
+      ]
+    },
+    "crypto_3r": {
+      "mi": 0.6921353977918624,
+      "expected": "high (>> 0)"
+    },
+    "_passed": 4,
+    "_total": 4
+  },
   "e09_statistical_test": {
     "source_accs": [
       0.865,
@@ -88,6 +111,44 @@
       "std": 0.0015042021140790963,
       "t_stat": 0.4999328168477239,
       "p_value": 0.643373265173837
+    }
+  },
+  "e11_fixed": {
+    "3": {
+      "classical": 0.7499872,
+      "neural": 0.99994,
+      "gohr": null,
+      "gap": 0.25
+    },
+    "4": {
+      "classical": 0.7347316000000002,
+      "neural": 0.97776,
+      "gohr": null,
+      "gap": 0.243
+    },
+    "5": {
+      "classical": 0.6924572,
+      "neural": 0.86588,
+      "gohr": 0.9244,
+      "gap": 0.1734
+    },
+    "6": {
+      "classical": 0.5882988,
+      "neural": 0.66584,
+      "gohr": 0.788,
+      "gap": 0.0775
+    },
+    "7": {
+      "classical": 0.5017368000000001,
+      "neural": 0.51278,
+      "gohr": 0.6116,
+      "gap": 0.011
+    },
+    "8": {
+      "classical": 0.5015424,
+      "neural": 0.49778,
+      "gohr": 0.5134,
+      "gap": -0.0038
     }
   }
 }
