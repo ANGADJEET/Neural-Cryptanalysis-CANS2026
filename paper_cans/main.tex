@@ -546,6 +546,7 @@ A DDT-only distinguisher at $r$ rounds computes some function $g(D_r)$.
 Since $D_{r'} = \sum_{\Delta} T_{r'+1:r}(\cdot \mid \Delta) \cdot D_{r'}(\Delta)$ for $r' < r$ (i.e., $D_r$ is a refinement of $D_{r'}$),
 any feature separating $D_r$ from uniform must also separate $D_{r'}$ from uniform with at least as much margin.
 Thus $\mathrm{acc}(f^{(r)}, r') \geq \mathrm{acc}(f^{(r)}, r) > 0.5$.
+This proof implicitly requires the marginal probabilities of individual features (e.g., bit biases) to evolve monotonically toward uniform, as is the case for SPN architectures.
 Our \present results (99.1\% transfer from 4r to 2r) are fully consistent and provide empirical confirmation.
 
 \textbf{Contrapositive.}
@@ -560,14 +561,14 @@ What is surprising is the \emph{strength} and \emph{systematicity} of the anti-t
 \subsection{Why \simon Anti-Transfers}
 
 Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers should learn only DDT features, which should imply composability via Conjecture~\ref{conj:markov}.
-Our \simon anti-transfer ($48.6\%$) contradicts this.
+Our \simon anti-transfer ($48.6\%$) appears to contradict this prediction.
 
-The anti-transfer paradox provides the explanation.
-The networks attend to the same differential bits at all round counts ($\rho > 0.69$), but the mapping from these features to the class label oscillates with depth.
-\simon's AND-rotation nonlinearity creates differential patterns that, while technically within the DDT, are highly round-dependent.
-Under the Gohr et al.\ framework, \simon's round function satisfies their assumptions---our results suggest that DDT-only features are \emph{necessary} but not \emph{sufficient} for composability when the round function's nonlinearity creates oscillating feature-label correlations.
+To resolve this paradox, we conducted a targeted analysis of \simon's empirical DDT bit-biases across rounds 4, 5, and 6 (5 million samples). We found that the feature-to-label correlations (bit biases) \emph{invert sign} between rounds. The Pearson correlation between bit biases at 4r vs.\ 5r is $-0.11$, and between 5r vs.\ 6r is $-0.03$. For example, the 8th least significant bit of $\Delta C$ has a bias of $-0.5$ (always 0) at 4r, $+0.125$ at 5r, and $+0.5$ (always 1) at 6r.
 
-This distinction has implications for cipher design: Feistel ciphers with complex nonlinear round functions may produce differential features that resist neural composition, even though they compose classically.
+Thus, a DDT-only learner trained at 6r will strongly associate bit $8=1$ with the real distribution. When evaluated on 4r data, where bit $8=0$ in the real distribution, the classifier is systematically misled. This demonstrates that \simon's AND-rotation nonlinearity creates oscillating marginal distributions.
+DDT-only features are therefore \emph{necessary} but not \emph{sufficient} for positive transfer; composability also requires monotonic feature evolution (which SPN provides but \simon's Feistel structure disrupts).
+
+This distinction has implications for cipher design: Feistel ciphers with complex nonlinear round functions may produce oscillating differential features that resist neural composition, even though they compose classically.
 
 \subsection{Limitations}
 
