@@ -206,7 +206,7 @@ Each experiment uses 5 random seeds; the key changes per seed.
 We split data 80/10/10 for train/validation/test.
 
 All models use Adam ($\text{lr} = 10^{-3}$), binary cross-entropy loss, batch size 5000, up to 30 epochs with early stopping (patience~5) on validation accuracy.
-Total compute: $\approx$72 GPU-hours on a single NVIDIA Tesla V100-PCIE-32GB.
+Total compute: $\approx$72 GPU-hours on a single GPU.
 
 \subsection{Input Representation}
 
@@ -260,7 +260,7 @@ To ensure findings are not artifacts of a suboptimal input difference, we run a 
 \label{sec:experiments}
 
 We evaluate MLP distinguishers on \speck (3--8r), \simon (4--11r), and \present (2--7r).
-Each configuration uses 500K training samples, 10 random seeds, and R2\_xor\_diff.
+Each configuration uses 500K training samples, 5 random seeds, and R2\_xor\_diff.
 
 \subsection{Locating the Signal}
 \label{sec:exp-representation}
@@ -533,7 +533,7 @@ We make this connection explicit:
 \begin{conjecture}[Markov--Transfer]
 \label{conj:markov}
 Let $E$ be a block cipher whose differential propagation satisfies the Markov property.
-If a neural distinguisher $f^{(r)}$ learns only features that are functions of the differential distribution table (DDT), then for $r' < r$:
+If a neural distinguisher $f^{(r)}$ learns only features that are functions of the differential distribution table (DDT), \emph{and} the marginal DDT feature distributions evolve monotonically toward uniform as $r$ increases, then for $r' < r$:
 $\mathrm{acc}(f^{(r)}, r') > 0.5$.
 \end{conjecture}
 
@@ -544,14 +544,13 @@ $D_r(\Delta C \mid \Delta P) = \sum_{\Delta_1, \ldots, \Delta_{r-1}} \prod_{i=1}
 where $T_i$ are single-round DDT transition matrices and $\Delta_0 = \Delta P$.
 A DDT-only distinguisher at $r$ rounds computes some function $g(D_r)$.
 Since $D_{r'} = \sum_{\Delta} T_{r'+1:r}(\cdot \mid \Delta) \cdot D_{r'}(\Delta)$ for $r' < r$ (i.e., $D_r$ is a refinement of $D_{r'}$),
-any feature separating $D_r$ from uniform must also separate $D_{r'}$ from uniform with at least as much margin.
+any feature separating $D_r$ from uniform must also separate $D_{r'}$ from uniform with at least as much margin, \emph{provided} the per-bit biases decay monotonically toward 0.5.
 Thus $\mathrm{acc}(f^{(r)}, r') \geq \mathrm{acc}(f^{(r)}, r) > 0.5$.
-This proof implicitly requires the marginal probabilities of individual features (e.g., bit biases) to evolve monotonically toward uniform, as is the case for SPN architectures.
+SPN architectures satisfy the monotonicity condition because each round's substitution-permutation layer uniformly mixes all state bits.
 Our \present results (99.1\% transfer from 4r to 2r) are fully consistent and provide empirical confirmation.
 
 \textbf{Contrapositive.}
-If $\mathrm{acc}(f^{(r)}, r') < 0.5$, then $f^{(r)}$ must have learned non-DDT features, even if the cipher is Markov.
-This is precisely what we observe for \speck (ARX), consistent with Gohr et al.'s proof that ARX distinguishers exploit non-differential features.
+If $\mathrm{acc}(f^{(r)}, r') < 0.5$, then either $f^{(r)}$ has learned non-DDT features (as in \speck, consistent with Gohr et al.'s proof that ARX distinguishers exploit non-differential features), or the DDT feature distributions violate the monotonicity condition (as in \simon, see Sect.~\ref{sec:simon-why}).
 
 \textbf{Scope.}
 The conjecture does \emph{not} claim that all classifiers on Markov data must transfer.
@@ -559,15 +558,21 @@ The optimal Bayes classifier changes with the data distribution (which changes w
 What is surprising is the \emph{strength} and \emph{systematicity} of the anti-transfer: 45.5\% is not a marginal failure but a large, reproducible effect (5~seeds, $\geq$2 architectures, $\geq$5 $\Delta P$ choices, both key schedule types).
 
 \subsection{Why \simon Anti-Transfers}
+\label{sec:simon-why}
 
-Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers should learn only DDT features, which should imply composability via Conjecture~\ref{conj:markov}.
-Our \simon anti-transfer ($48.6\%$) appears to contradict this prediction.
+Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers should learn only DDT features.
+If the monotonicity condition of Conjecture~\ref{conj:markov} held, this would imply positive transfer.
+Our \simon anti-transfer ($48.6\%$) appears to violate this prediction.
 
-To resolve this paradox, we conducted a targeted analysis of \simon's empirical DDT bit-biases across rounds 4, 5, and 6 (5 million samples). We found that the feature-to-label correlations (bit biases) \emph{invert sign} between rounds. The Pearson correlation between bit biases at 4r vs.\ 5r is $-0.11$, and between 5r vs.\ 6r is $-0.03$. For example, the 8th least significant bit of $\Delta C$ has a bias of $-0.5$ (always 0) at 4r, $+0.125$ at 5r, and $+0.5$ (always 1) at 6r.
+To resolve this, we conducted a targeted analysis of \simon's empirical DDT bit-biases across rounds 4, 5, and 6 (5 million samples per round).
+The Pearson correlation between bit-bias vectors at 4r vs.\ 5r is $-0.11$, and between 5r vs.\ 6r is $-0.03$---indicating that the marginal distributions do \emph{not} evolve monotonically.
+Specific bits invert sign dramatically: the 8th least significant bit of $\Delta C$ has a bias of $-0.5$ (always 0) at 4r, $+0.125$ at 5r, and $+0.5$ (always 1) at 6r.
 
-Thus, a DDT-only learner trained at 6r will strongly associate bit $8=1$ with the real distribution. When evaluated on 4r data, where bit $8=0$ in the real distribution, the classifier is systematically misled. This demonstrates that \simon's AND-rotation nonlinearity creates oscillating marginal distributions.
+Thus, a DDT-only learner trained at 6r will strongly associate bit~$8{=}1$ with the real distribution.
+When evaluated on 4r data, where bit~$8{=}0$ in the real distribution, the classifier is systematically misled.
+This demonstrates that \simon's AND-rotation nonlinearity $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$ creates \emph{oscillating} marginal distributions across rounds, violating the monotonicity condition even though the cipher satisfies the Markov property.
+
 DDT-only features are therefore \emph{necessary} but not \emph{sufficient} for positive transfer; composability also requires monotonic feature evolution (which SPN provides but \simon's Feistel structure disrupts).
-
 This distinction has implications for cipher design: Feistel ciphers with complex nonlinear round functions may produce oscillating differential features that resist neural composition, even though they compose classically.
 
 \subsection{Limitations}
