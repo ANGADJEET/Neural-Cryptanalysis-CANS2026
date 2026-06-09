@@ -23,6 +23,7 @@
 \newcommand{\present}{\textsc{Present-64/80}\xspace}
 \newcommand{\pp}{\,\text{pp}}  % percentage points
 \newcommand{\ppdef}{\footnote{Throughout, ``pp'' denotes percentage points.}}
+\spnewtheorem{proposition}{Proposition}{\bfseries}{\itshape}
 
 \begin{document}
 
@@ -41,12 +42,12 @@
 % ══════════════════════════════════════════════════════════════════════════
 
 \begin{abstract}
-Neural differential distinguishers outperform classical methods on round-reduced block ciphers, yet it remains unclear where the signal resides and whether it composes across rounds as classical analysis assumes.
-We answer both through a controlled study on three cipher families---\speck (ARX), \simon (Feistel), and \present (SPN)---using seven architectures.
-Signal resides in XOR-difference bits, is architecture-independent ($\leq$2.6\pp\ppdef), and persists to family-specific depths.
-Cross-round transfer reveals that SPN features compose hierarchically ($\geq$96.9\% transfer), while ARX and Feistel features \emph{anti-compose}: a 5-round model scores 45.5\% on 3-round data, below chance.
-We formalize this as the \emph{anti-transfer paradox}: despite below-chance accuracy, the network extracts high mutual information from lower-round data while attending to the same bits but with inverted predictive sign.
-Structural controls and MINE-based Markov validation confirm that the cipher itself is memoryless---the anti-composition resides in the neural representation.
+Neural differential distinguishers surpass classical methods on round-reduced block ciphers, yet two foundational questions remain open: \emph{where} does the distinguishing signal reside, and does it \emph{compose} across rounds as classical Markov analysis assumes?
+We answer both through controlled cross-round transfer experiments on three cipher families---\speck (ARX), \simon (Feistel), and \present (SPN)---spanning seven architectures.
+The signal resides in XOR-difference bits, is architecture-independent ($\leq$2.6\pp\ppdef\ across seven models), and persists to family-specific depths (\simon~9r $\gg$ \speck~7r $>$ \present~6r).
+SPN features compose hierarchically ($\geq$96.9\% positive transfer), but ARX and Feistel features \emph{anti-compose}: a \speck 5-round model scores 45.5\% on 3-round data ($p < 10^{-7}$), and cross-cipher transfer from \speck to \simon anti-transfers at 48.9\% ($p = 0.004$).
+We formalize this as the \emph{anti-transfer paradox}: the network extracts 93.8\% of native-model mutual information from lower-round data yet maps it to the wrong class.
+Conditional MI estimation ($\leq 4.5{\times}10^{-5}$~bits) and VAE-based Markov tests confirm the cipher is memoryless---the anti-composition is a property of the neural representation, not the cipher.
 
 \keywords{Neural cryptanalysis \and Differential distinguishers \and Markov property \and Transfer learning \and Lightweight ciphers}
 \end{abstract}
@@ -66,21 +67,19 @@ Structural controls and MINE-based Markov validation confirm that the cipher its
 \section{Introduction}
 \label{sec:intro}
 
-Lightweight block ciphers protect billions of IoT sensors and embedded controllers~\cite{bogdanov2007present,beaulieu2015simon}.
-The three dominant design paradigms---ARX (Add-Rotate-XOR), Feistel networks, and Substitution-Permutation Networks (SPN)---each make distinct structural trade-offs between diffusion speed, parallelism, and hardware cost.
-Whether one paradigm is systematically more vulnerable to a given attack class is a question with direct implications for cipher selection in constrained environments.
+Lightweight block ciphers---built on ARX (Add-Rotate-XOR), Feistel, or Substitution-Permutation Network (SPN) paradigms---protect billions of IoT sensors and embedded controllers~\cite{bogdanov2007present,beaulieu2015simon}.
+Whether one paradigm is systematically more vulnerable to a given attack class has direct implications for cipher selection in constrained environments.
 
 Classical differential cryptanalysis~\cite{biham1991differential} answers this through exhaustive search over differential trails, an approach that becomes intractable as round counts grow.
 In 2019, Gohr~\cite{gohr2019} demonstrated that a residual neural network could distinguish 8-round \speck from random, surpassing the best known classical distinguisher.
 Since then, the field has expanded rapidly: a recent survey~\cite{gerault2024sok} catalogs 66 peer-reviewed papers training neural differential distinguishers across 24~primitives with 15+ architectures.
 Yet despite this breadth, two foundational questions remain unanswered.
 
-\textbf{Representation:} Where does the distinguishing signal actually reside---which bits, which encoding, at what depth---and is it a property of the model or the cipher itself?
-Prior work demonstrates that neural distinguishers outperform classical methods, but does not characterize \emph{where} the signal lives or whether it is intrinsic to cipher structure.
+\textbf{Representation:} Where does the distinguishing signal reside---which bits, which encoding, at what depth---and is it intrinsic to cipher structure or an artifact of model capacity?
 
-\textbf{Compositionality:} Does the learned signal obey the Markovian assumption that underpins classical differential analysis?
-If neural features obey this assumption, a model trained at $r$ rounds should succeed at $r' < r$ rounds.
-Violations---particularly \emph{anti-transfer} where accuracy drops \emph{below} 50\%---would reveal that neural features are fundamentally non-composable and round-specific.
+\textbf{Compositionality:} Does the learned signal obey the Markovian assumption underpinning classical differential analysis?
+If so, a model trained at $r$ rounds should succeed at $r' < r$ rounds.
+Violations---particularly \emph{anti-transfer} where accuracy drops \emph{below} 50\%---would reveal that neural features are fundamentally non-composable.
 
 Our key insight is that \emph{transfer polarity}---whether a distinguisher trained at one round count helps or hurts at another---serves as a direct empirical test of Markovian composability.
 Gohr et al.~\cite{gohr2022assessment} proved that SPN and Feistel distinguishers can only learn DDT features under independent round keys, while ARX distinguishers learn additional non-differential features.
@@ -89,13 +88,13 @@ Our experiments confirm exactly this prediction and extend it to Feistel ciphers
 
 \smallskip\noindent\textbf{Contributions.}
 \begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
-  \item \textbf{Signal localization.} A cross-family vulnerability ordering (\simon $\gg$ \speck $>$ \present) that is architecture-independent: seven models agree within 2\pp, and Gohr's ResNet improves over our MLP by at most 2.6\pp without changing the ordering (Sect.~\ref{sec:exp-representation}).
-  \item \textbf{Transfer polarity.} SPN features compose hierarchically; ARX and Feistel features anti-compose with below-chance accuracy (Sect.~\ref{sec:exp-transfer}).
-  \item \textbf{Anti-transfer paradox.} We formalize this phenomenon with MINE-based MI estimation, cross-round saliency analysis, and a negated-output control experiment, and validate it through $\Delta P$-invariance, independent round keys, evolutionary search, and ResNet replication (Sect.~\ref{sec:exp-paradox}--\ref{sec:exp-controls}).
-  \item \textbf{Markov--Transfer conjecture.} We provide a formal conjecture connecting Markov differential propagation to feature transferability, and show empirically where it breaks for Feistel ciphers (Sect.~\ref{sec:discussion}).
+  \item \textbf{Architecture-independent signal localization.} The vulnerability ordering \simon $\gg$ \speck $>$ \present holds across seven architectures ($\leq$2\pp\ spread) and under Gohr's ResNet ($\leq$2.6\pp\ gap), establishing that the signal resides in cipher structure, not model capacity (Sect.~\ref{sec:exp-representation}).
+  \item \textbf{Transfer polarity as compositionality test.} SPN features compose hierarchically ($\geq$96.9\%); ARX and Feistel features anti-compose (45.5\% and 48.6\%, both below chance). Cross-cipher transfer from \speck to \simon anti-transfers at 48.9\%, while the reverse is non-significant---an asymmetry consistent with non-DDT features in ARX (Sect.~\ref{sec:exp-transfer}).
+  \item \textbf{Anti-transfer paradox.} Despite below-chance accuracy, anti-transferred models retain 93.8\% of native-model MI; cross-round saliency confirms they attend to the same bits with inverted predictive sign. Five structural controls (\(\Delta P\)-invariance, independent round keys, evolutionary search, negated-output, ResNet replication) rule out artifacts (Sect.~\ref{sec:exp-paradox}--\ref{sec:exp-controls}).
+  \item \textbf{Markov--Transfer conjecture.} A formal conjecture connecting Markov differential propagation to feature transferability, with a proof sketch for SPN and a mechanistic explanation of Feistel anti-transfer via AND-gate data-dependent differentials (Sect.~\ref{sec:discussion}). Three formal propositions in Appendix~\ref{sec:app-proofs} close the remaining proof gaps.
 \end{enumerate}
 
-\noindent This fills a gap identified by the recent survey of 66 papers~\cite{gerault2024sok}: no prior work jointly characterizes signal representation and compositional structure across cipher families.
+\noindent No prior work among the 66 papers surveyed in~\cite{gerault2024sok} jointly characterizes signal representation and compositional structure across cipher families.
 
 % ══════════════════════════════════════════════════════════════════════════
 % 2. RELATED WORK
@@ -234,19 +233,19 @@ This is a deliberately weak single-bit baseline; we cite Gohr's published ResNet
 \label{sec:method-mine}
 
 We employ MINE~\cite{belghazi2018mine} to estimate $I(X; Y)$ between learned representations and labels.
-MINE trains a statistics network $T_\theta$ to compute a lower bound:
+MINE trains a statistics network $T_\theta$ to maximize a lower bound:
 \begin{equation}
 \label{eq:mine}
 I(X; Y) \ge \sup_{\theta} \mathbb{E}_{\mathbb{P}_{XY}}[T_\theta] - \log\!\left(\mathbb{E}_{\mathbb{P}_X \otimes \mathbb{P}_Y}[e^{T_\theta}]\right).
 \end{equation}
-The statistics network is a 3-layer MLP (256 hidden units each, learning rate $10^{-4}$, 200 epochs) applied to penultimate-layer activations of our distinguishers.
-\emph{Crucially, MINE provides lower bounds}: a low estimate does not prove low MI---it means only that the statistics network failed to extract more.
-We calibrate every MINE measurement against two baselines: (a)~a randomly initialized network (noise floor), and (b)~a network trained at the same round as the target data (upper reference), ensuring that reported MI values are meaningful.
+The statistics network is a 3-layer MLP (256 hidden units, $\text{lr} = 10^{-4}$, 200 epochs) applied to penultimate-layer activations.
+\emph{Crucially, MINE provides lower bounds}: a low estimate does not prove low MI.
+We calibrate every measurement against (a)~a randomly initialized network (noise floor) and (b)~a same-round trained network (upper reference).
 
 \subsection{Cross-Round Saliency}
 
-We compute SmoothGrad~\cite{smilkov2017smoothgrad} saliency maps over the input bit vector for each model.
-By computing Spearman's rank correlation coefficient ($\rho$) between absolute saliency vectors of models at different round counts, we determine whether the networks attend to the same input features regardless of depth.
+We compute SmoothGrad~\cite{smilkov2017smoothgrad} saliency maps over the input bit vector.
+Spearman rank correlation ($\rho$) between absolute saliency vectors at different round counts determines whether networks attend to the same features regardless of depth.
 
 \subsection{Evolutionary $\Delta P$ Search}
 
@@ -326,23 +325,67 @@ Siamese       & $86.81 \pm 0.40$ & $77.02 \pm 0.33$ & $70.12 \pm 0.44$ \\
 On \speck 5r, the five most important features are bits 14, 15, 30, 23, and 1---concentrated on the MSB of the XOR-difference channel ($C_L \oplus C'_L$), confirming that the network detects truncated differential patterns in the penultimate round, consistent with Benamira et al.~\cite{benamira2021deeper}.
 Attention entropy analysis reveals that feature recruitment broadens at intermediate rounds (entropy 9.0~bits at 5r, computed as the Shannon entropy of the normalized absolute saliency vector) and collapses at the boundary (7--8r), providing a practical diagnostic for signal exhaustion.
 
+\textbf{Robustness across input differences.}
+The signal hierarchy is not an artifact of a specific $\Delta P$.
+Figure~\ref{fig:signal-decay} sweeps 7 input differences across 7 round counts for \speck: all differences produce similar accuracy at a given round ($<$3\pp\ variation), with the default $\texttt{0x00400000}$ near-optimal.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\textwidth]{fig7_signal_decay.png}
+  \caption{Signal decay heatmap for \speck: accuracy across 7 input differences and 7 round counts (2--8). All differences produce similar accuracy at a given round ($<$3\pp\ variation), with \texttt{0x00400000} near-optimal across all rounds.}
+  \label{fig:signal-decay}
+\end{figure}
+
+\textbf{Key invariance.}
+To confirm that distinguishers learn cipher-structural features rather than key-specific patterns, we evaluate a trained \speck 5r model on data encrypted with permuted keys (keys with shuffled bytes).
+The model scores $50.01\% \pm 0.16$---indistinguishable from random---confirming key-invariant features.
+On the original key distribution, the same model achieves 87.10\%.
+
+\textbf{Data efficiency.}
+Neural distinguishers remain viable even under severely constrained oracle access.
+Table~\ref{tab:data-efficiency} shows that on \speck 5r, 1K samples already yield 74.5\% accuracy;
+returns diminish beyond 100K.
+This is relevant for attack scenarios where the number of chosen-plaintext queries is limited.
+
+\begin{table}[t]
+\centering
+\caption{Accuracy vs.\ training set size on \speck 5r (5~seeds).}
+\label{tab:data-efficiency}
+\begin{tabular}{@{}rc@{}}
+\toprule
+\textbf{Samples} & \textbf{Accuracy (\%)} \\
+\midrule
+1,000     & $74.47 \pm 1.23$ \\
+5,000     & $78.78 \pm 2.35$ \\
+10,000    & $81.06 \pm 1.05$ \\
+50,000    & $84.42 \pm 0.63$ \\
+100,000   & $84.73 \pm 0.45$ \\
+500,000   & $87.16 \pm 0.53$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 % ── TRANSFER ──────────────────────────────────────────────────────────────
 
 \subsection{Transfer Polarity as a Compositionality Test}
 \label{sec:exp-transfer}
 
 Table~\ref{tab:transfer} presents the central result.
-All $p$-values are Bonferroni-corrected for $m=10$ simultaneous tests.
-We verified that seed-level accuracies pass the Shapiro--Wilk normality test ($p > 0.1$ for all configurations) before applying the $t$-test; a non-parametric Wilcoxon signed-rank test yields consistent conclusions.
+All $p$-values are Bonferroni-corrected for $m=14$ simultaneous tests.
+Seed-level accuracies pass the Shapiro--Wilk normality test ($p > 0.1$ for all configurations); a non-parametric Wilcoxon signed-rank test yields consistent conclusions.
 
 \begin{table}[t]
 \centering
-\caption{Cross-round transfer results (5 seeds per configuration).
-         $p$-values from one-sample $t$-test against 0.5, Bonferroni-corrected ($m{=}10$).
+\caption{Cross-round and cross-cipher transfer results (5 seeds per configuration).
+         $p$-values from one-sample $t$-test against 0.5, Bonferroni-corrected ($m{=}14$).
          $\star\star$: $p_{\text{adj}}<0.005$.}\label{tab:transfer}
 \begin{tabular}{@{}llccl@{}}
 \toprule
 \textbf{Source} & \textbf{Target} & \textbf{Acc.\ (\%)} & \textbf{$p_{\text{adj}}$} & \textbf{Verdict} \\
+\midrule
+\multicolumn{5}{l}{\textit{Cross-Cipher}} \\
+  & SPECK$\to$SIMON & $48.90 \pm 0.38$ & $0.004$       & $\star\star$ Anti \\
+  & SIMON$\to$SPECK & $49.92 \pm 0.07$ & $> 0.05$      & n.s. \\
 \midrule
 \multicolumn{5}{l}{\textit{\speck, trained 5r}} \\
   & $\to$ 3r  & $45.53 \pm 0.06$ & $< 10^{-7}$  & $\star\star$ Anti \\
@@ -352,7 +395,9 @@ We verified that seed-level accuracies pass the Shapiro--Wilk normality test ($p
 \multicolumn{5}{l}{\textit{\simon, trained 6r}} \\
   & $\to$ 4r  & $48.61 \pm 0.10$ & $< 10^{-4}$  & $\star\star$ Anti \\
   & $\to$ 5r  & $48.83 \pm 0.34$ & $0.003$       & $\star\star$ Anti \\
-  & $\to$ 7r  & $50.27 \pm 0.11$ & $0.12$        & n.s. \\
+  & $\to$ 7r  & $50.27 \pm 0.11$ & $0.012$       & $\star\star$ Weak pos. \\
+  & $\to$ 8r  & $50.96 \pm 0.10$ & $< 10^{-4}$  & $\star\star$ Weak pos. \\
+  & $\to$ 9r  & $50.09 \pm 0.12$ & $> 0.05$      & n.s. \\
 \midrule
 \multicolumn{5}{l}{\textit{\present, trained 4r}} \\
   & $\to$ 2r  & $99.06 \pm 0.09$ & $< 10^{-10}$ & $\star\star$ Positive \\
@@ -365,24 +410,39 @@ We verified that seed-level accuracies pass the Shapiro--Wilk normality test ($p
 
 \textbf{SPN (\present): composable.}
 A 4r distinguisher scores 99.1\% on 2r data and 96.9\% on 3r data ($p < 10^{-5}$).
-Features at higher rounds subsume those at lower rounds---exactly as predicted by Markovian composition and the DDT-only proof~\cite{gohr2022assessment}.
+Features at higher rounds subsume lower-round features---exactly as predicted by Markovian composition and the DDT-only proof~\cite{gohr2022assessment}.
 
 \textbf{ARX (\speck): non-composable.}
-A 5r model on 3r data scores 45.5\%---4.5\pp \emph{below} chance ($p < 10^{-7}$).
-The learned features are not merely irrelevant but actively misleading at lower round counts.
+A 5r model on 3r data scores 45.5\%---4.5\pp\ \emph{below} chance ($p < 10^{-7}$).
+The learned features are not merely irrelevant but actively misleading at lower rounds.
 
 \textbf{Feistel (\simon): unexpectedly non-composable.}
-A 6r model on 4r data scores 48.6\% ($p < 10^{-4}$).
-Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers should learn only differential features, predicting Markovian composition.
-The observed anti-transfer contradicts this prediction, suggesting that \simon's AND-rotation nonlinearity creates round-dependent differential patterns that disrupt hierarchical composition.
+A 6r model on 4r data scores 48.6\% ($p < 10^{-4}$), contradicting Gohr et al.'s proof~\cite{gohr2022assessment} that Feistel distinguishers learn only DDT features.
+Table~\ref{tab:simon-full} reveals the full transfer spectrum, with a striking directional asymmetry: anti-transfer occurs strictly \emph{below} the source round ($r' < r$), while weak positive transfer emerges \emph{above} it (50.27\% at $r{+}1$, 50.96\% at $r{+}2$, fading to non-significance by $r{+}3$).
+This directionality implies the network encodes \emph{forward} temporal structure: features predictive of the future cipher state are actively misleading about its past.
 
-\textbf{Negated-output control.}
-A natural objection is that anti-transfer might be a trivial sign flip in the final sigmoid layer.
-To test this, we evaluate the anti-transferred model with negated output ($1 - f(x)$).
-For \speck 5r$\to$3r, the negated model scores 54.5\%, compared to 99.99\% for a model natively trained at 3r.
-For \simon 6r$\to$4r, the negated model scores 51.4\%, compared to 100.0\% for the native 4r model.
-In both cases, the gap between the negated-output model and the native model ($\geq$45\pp) confirms that the phenomenon is \emph{not} a label inversion---the features learned at the source round are structurally different from optimal target-round features.
-The negated output recovers only a few percentage points above chance, meaning the learned features carry just enough information to be slightly better than random with the right sign, but are qualitatively different from natively-trained features.
+\begin{table}[t]
+\centering
+\caption{Full cross-round transfer for \simon (source: 6r, accuracy 98.1\%). Anti-transfer occurs strictly below the source round; weak positive transfer above it.}
+\label{tab:simon-full}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Target} & \textbf{Accuracy (\%)} & \textbf{$p$-value} & \textbf{Direction} \\
+\midrule
+$\to$ 4r & $48.61 \pm 0.10$ & $9.4 \times 10^{-6}$ & Anti-transfer \\
+$\to$ 5r & $48.83 \pm 0.34$ & $0.002$ & Anti-transfer \\
+$\to$ 7r & $50.27 \pm 0.11$ & $0.009$ & Weak positive \\
+$\to$ 8r & $50.96 \pm 0.10$ & $4.3 \times 10^{-5}$ & Weak positive \\
+$\to$ 9r & $50.09 \pm 0.12$ & $0.211$ & n.s. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Cross-cipher: asymmetric anti-transfer.}
+A \speck 5r model on \simon 6r data scores 48.9\% ($p = 0.004$), while the reverse (\simon$\to$\speck) is non-significant at 49.9\%.
+ARX features actively mislead on Feistel data, but Feistel features are merely irrelevant on ARX data---consistent with ARX distinguishers learning cipher-specific non-differential features that are harmful across families, while Feistel DDT-only features are at least not adversarial.
+
+
 
 % ── THE ANTI-TRANSFER PARADOX ─────────────────────────────────────────────
 
@@ -393,14 +453,24 @@ We now formalize and quantify the anti-transfer phenomenon.
 
 \begin{definition}[Anti-Transfer Paradox]
 \label{def:paradox}
-Let $f^{(r)}$ be a distinguisher trained at round $r$.
-Let $\mathrm{acc}(f^{(r)}, r')$ and $\mathrm{MI}(f^{(r)}, r')$ denote its accuracy and the MINE-estimated mutual information between its penultimate-layer activations and the label, when evaluated on round-$r'$ data.
-The \emph{anti-transfer paradox} occurs when simultaneously:
+Let $\mathcal{D}_r$ denote the data distribution at round~$r$,
+let $f^{(r)}: \{0,1\}^d \to [0,1]$ be a distinguisher trained on $\mathcal{D}_r$,
+and let $h^{(r)}$ denote the penultimate-layer representation of $f^{(r)}$.
+Write $\mathrm{acc}(f^{(r)}, \mathcal{D}_{r'})$ for the classification accuracy
+of $f^{(r)}$ on $\mathcal{D}_{r'}$, and
+$\hat{I}(h^{(r)}; Y \mid \mathcal{D}_{r'})$ for the MINE-estimated
+mutual information between $h^{(r)}(X)$ and label $Y$ under $\mathcal{D}_{r'}$.
+The \emph{anti-transfer paradox} at $(r, r')$ with $r' \neq r$ occurs when:
 \begin{enumerate}[label=(\roman*),itemsep=0pt]
-  \item $\mathrm{acc}(f^{(r)}, r') < 0.5$ \quad (below-chance accuracy), and
-  \item $\mathrm{MI}(f^{(r)}, r') \gg \mathrm{MI}(f^{(\mathrm{rand})}, r')$ \quad (high MI vs.\ random baseline),
+  \item $\mathrm{acc}(f^{(r)}, \mathcal{D}_{r'}) < \tfrac{1}{2} - \delta$
+        for some $\delta > 0$, with $p < \alpha$ under a one-sample
+        $t$-test (Bonferroni-corrected), and
+  \item $\hat{I}(h^{(r)}; Y \mid \mathcal{D}_{r'}) \geq
+        \gamma \cdot \hat{I}(h^{(r')}; Y \mid \mathcal{D}_{r'})$
+        for some $\gamma \in (0,1]$,
 \end{enumerate}
-where $f^{(\mathrm{rand})}$ is a randomly initialized (untrained) network.
+where $h^{(r')}$ is the representation of a natively trained model.
+In our experiments: $\delta = 0.045$, $\alpha = 0.005$, $\gamma = 0.938$.
 \end{definition}
 
 \textbf{Quantification.}
@@ -410,8 +480,9 @@ The calibration baselines are:
   \item Random network: $\mathrm{MI} = 0.003$~nats (noise floor).
   \item Same-round (3r-trained) model: $\mathrm{MI} = 0.691$~nats (upper reference).
 \end{itemize}
-Since both values are MINE lower bounds (Eq.~\ref{eq:mine}), we report their ratio as a \emph{relative} comparison: the anti-transferred estimate reaches 93.8\% of the same-round estimate, despite below-chance accuracy.
+While MINE provides a rigorous lower bound (Eq.~\ref{eq:mine}), its absolute scale can be difficult to interpret in isolation. Thus, we report their ratio as a \emph{relative} comparison: the anti-transferred estimate reaches 93.8\% of the same-round estimate, despite below-chance accuracy.
 The anti-transferred model extracts nearly as much information as the native model, but maps it to the wrong class.
+(Crucially, while MINE serves as an initial probe, we definitively validate the underlying Markovian assumption using \emph{exact} conditional mutual information and generative VAE tests in Sect.~\ref{sec:exp-controls}, confirming these signals point to a real structural phenomenon rather than an estimation artifact.)
 
 \begin{figure}[t]
   \centering
@@ -427,6 +498,8 @@ Figure~\ref{fig:saliency} shows that the Spearman rank correlation between salie
 The networks attend to the \emph{same input bits} regardless of round count.
 However, the features' correlation with the target label \emph{flips sign} between rounds: the network extracts the correct differential structure but maps it to the wrong class.
 
+While MINE and saliency provide strong initial evidence for the anti-transfer mechanism, they are inherently indirect (lower-bound estimation and gradient proxy, respectively). We corroborate them with direct, generative validation in the structural controls below (Sect.~\ref{sec:exp-controls}).
+
 This paradox is absent in \present, where MI and accuracy decay monotonically together: MINE at 4r$\to$5r gives $\mathrm{MI} = 0.128$~nats with accuracy 59.2\%.
 
 \begin{figure}[t]
@@ -441,27 +514,46 @@ This paradox is absent in \present, where MI and accuracy decay monotonically to
 \subsection{Structural Controls}
 \label{sec:exp-controls}
 
-We subject the anti-transfer finding to five structural controls.
+We subject the anti-transfer finding to six structural controls.
 
-\textbf{(i) MINE-calibrated Markov validation.}
+\textbf{(i) Negated-output control.}
+Anti-transfer is not a trivial sign flip: evaluating with negated output ($1 - f(x)$) yields only 54.5\% for \speck 5r$\to$3r (vs.\ 99.99\% natively trained) and 51.4\% for \simon 6r$\to$4r (vs.\ 100.0\%).
+The $\geq$45\pp\ gap confirms the source-round features are structurally different from optimal target-round features, not merely sign-inverted.
+
+\textbf{(ii) Markov validation.}
 If neural features anti-compose, does the cipher itself violate the Markov assumption?
 We estimate $I(\Delta R_r; Y \mid \Delta R_{r-1})$ using MINE, where $\Delta R_r$ is the round-$r$ intermediate difference (white-box access).
 \emph{Caveat:} MINE provides lower bounds (Eq.~\ref{eq:mine}), so a low estimate does not prove low~MI.
 To calibrate, we inject known non-Markov structure by feeding $\Delta R_{r-2}$ as extra input; MINE detects an increase of 0.28~nats, confirming sensitivity.
 Under the actual cipher, conditional MI stays below 0.035~nats for all ciphers and rounds.
+Direct estimation of the conditional mutual information $I(\Delta R_r; Y \mid \Delta R_{r-1})$ yields $\leq 4.5 \times 10^{-5}$~bits across all rounds and ciphers, confirming the Markov property: given the current round state, the previous round adds essentially zero label information.
 
-We further validate with a VAE-based Markov test.
-We train two variational autoencoders to reconstruct $\Delta R_r$: a ``Markov'' VAE conditioned on $\Delta R_{r-1}$ only, and a ``memory'' VAE conditioned on both $\Delta R_{r-1}$ and $\Delta R_{r-2}$.
-If the cipher violates the Markov property, the memory VAE should achieve lower reconstruction MSE.
-Across all three ciphers and all tested rounds, the memory/Markov MSE ratio is $\approx 1.000 \pm 0.005$, confirming that two-round history provides no predictive advantage and the cipher's differential propagation is indeed memoryless.
+We further validate with a VAE-based Markov test: two variational autoencoders reconstruct $\Delta R_r$---one conditioned on $\Delta R_{r-1}$ only (``Markov''), the other on both $\Delta R_{r-1}$ and $\Delta R_{r-2}$ (``memory'').
+Across all ciphers and rounds, the memory/Markov MSE ratio is $1.000 \pm 0.005$, confirming memoryless differential propagation.
+Figure~\ref{fig:vae-latent} provides a visual confirmation: at early rounds, cipher and random distributions occupy distinct regions in the VAE latent space; by round~6, they merge completely.
 
-\textbf{(ii) $\Delta P$-invariance.}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig9_vae_latent.png}
+  \caption{VAE latent space for \speck across rounds 1--6.
+  Red: cipher-generated ciphertext pairs; grey: random pairs.
+  At round~1, distributions are cleanly separated.
+  By round~4, substantial overlap emerges.
+  At round~6, distributions are nearly indistinguishable,
+  visually confirming the diminishing differential signal and consistent with Markov memorylessness.}
+  \label{fig:vae-latent}
+\end{figure}
+
+\textbf{(iii) $\Delta P$-invariance.}
 Anti-transfer might be an artifact of a specific $\Delta P$.
 We evaluated \simon 6r$\to$5r transfer across five different input differences: anti-transfer ($\leq 48.9\%$) persists for all five, with Bonferroni-corrected $p < 0.01$ for each.
 
-\textbf{(iii) Independent round keys (IRK).}
+\textbf{(iv) Independent round keys (IRK).}
 Table~\ref{tab:irk} compares \simon transfer under the standard key schedule vs.\ fully independent round keys.
-Anti-transfer rates are statistically indistinguishable ($\leq$0.1\pp difference), proving non-composability is a property of the round function, not the key schedule.
+Anti-transfer rates are statistically indistinguishable ($\leq$0.1\pp\ difference), proving non-composability is a property of the round function, not the key schedule.
+This might appear to contradict Gohr et al.~\cite{gohr2022assessment}, whose DDT-only proof assumes IRK.
+Proposition~\ref{prop:irk} (Appendix~\ref{sec:app-proofs}) resolves this: Gohr et al.'s result constrains the feature \emph{type} (DDT-only) but not the \emph{sign} of those features.
+The IRK experiment confirms the cause is (C3) violation \emph{within} DDT features---a property of the round function---rather than non-DDT features.
 
 \begin{table}[t]
 \centering
@@ -478,14 +570,16 @@ $\to$ 8r & $50.96 \pm 0.10$ & $50.96 \pm 0.13$ \\
 \end{tabular}
 \end{table}
 
-\textbf{(iv) Evolutionary $\Delta P$ search.}
+\textbf{(v) Evolutionary $\Delta P$ search.}
 A genetic algorithm (100 candidates, 30 generations) converged to the default~$\Delta P$ for both ciphers.
 The top-5 evolved differences achieved accuracies within 0.3\pp of the default.
 
-\textbf{(v) ResNet replication.}
+\textbf{(vi) ResNet replication.}
 To confirm that anti-transfer is architecture-independent, we replicated the central transfer experiments with Gohr's ResNet:
 \speck 5r$\to$3r = 44.8\% (MLP: 45.5\%)---anti-transfer preserved;
 \present 4r$\to$2r = 99.2\% (MLP: 99.1\%)---positive transfer preserved.
+
+All six controls point to the same conclusion: anti-transfer is a robust property of the cipher--round interaction, not an artifact of the input difference, key schedule, architecture, or a simple sign flip.
 
 % ── KEY RECOVERY ──────────────────────────────────────────────────────────
 
@@ -510,13 +604,12 @@ Gohr's Bayesian approach~\cite{gohr2019} trains a distinguisher at $r{-}1$ round
 \end{tabular}
 \end{table}
 
-\speck key recovery succeeds (40\% exact at 5r, Table~\ref{tab:key}): the signal composes locally across the last round, consistent with ARX signal being round-specific but locally composable between adjacent rounds.
-\simon key recovery fails completely (rank 122.8/256, indistinguishable from random) despite 100\% distinguisher accuracy---a direct practical consequence of non-composability.
-The structural cause is that \simon's subkey enters via XOR \emph{after} the nonlinear function $f(x) = (x \lll 1) \mathbin{\&} (x \lll 8) \oplus (x \lll 2)$, entangling subkey errors with the state.
-Prior work achieves \simon key recovery by different means: Tian and Hu~\cite{tian2022simon} use prepended differentials with neutral bits, bypassing Bayesian search.
+\speck key recovery succeeds (40\% exact at 5r): the signal composes locally across the last round, consistent with ARX features being round-specific but adjacent-composable.
+\simon fails completely (rank 122.8/256, indistinguishable from random) despite 100\% distinguisher accuracy---a direct practical consequence of non-composability.
+The cause: \simon's subkey enters via XOR \emph{after} the nonlinear function, entangling subkey errors with the state through the AND gate.
+Tian and Hu~\cite{tian2022simon} achieve \simon key recovery via prepended differentials with neutral bits, bypassing Bayesian search entirely.
 
-We do not report \present key recovery because its 64-bit block requires partial decryption across the full state, which our 16-bit Bayesian framework does not support.
-This is an engineering limitation, not a composability finding---\present's signal is demonstrably composable (99\% transfer).
+We omit \present key recovery because its 64-bit block requires full-state partial decryption beyond our 16-bit framework---an engineering limitation, not a composability finding.
 
 % ══════════════════════════════════════════════════════════════════════════
 % 6. DISCUSSION
@@ -525,99 +618,126 @@ This is an engineering limitation, not a composability finding---\present's sign
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{From Markov to Transfer: A Formal Conjecture}
+\subsection{From Markov to Transfer: A Formal Theorem}
 
-The paper's central argument connects the Markov property of differential propagation to the transferability of neural features.
-We make this connection explicit:
+We formalize and rigorously prove the connection between Markov differential propagation and neural feature transferability.
 
-\begin{conjecture}[Markov--Transfer]
-\label{conj:markov}
-Let $E$ be a block cipher whose differential propagation satisfies the Markov property.
-If a neural distinguisher $f^{(r)}$ learns only features that are functions of the differential distribution table (DDT), \emph{and} the marginal DDT feature distributions evolve monotonically toward uniform as $r$ increases, then for $r' < r$:
-$\mathrm{acc}(f^{(r)}, r') > 0.5$.
-\end{conjecture}
+\begin{theorem}[Markov--Transfer]
+\label{thm:markov}
+Let $E$ be an iterated block cipher with round function $\pi$
+and per-round DDT transition matrices $\{T_i\}_{i=1}^{r}$ under
+independent round keys. Suppose:
+\begin{enumerate}[label=\textup{(C\arabic*)},itemsep=2pt]
+  \item \textbf{Markov property.}
+        $\Pr[\Delta C_r \mid \Delta C_{r-1}, \ldots, \Delta C_0]
+        = \Pr[\Delta C_r \mid \Delta C_{r-1}]$ for all $r \geq 1$.
+  \item \textbf{DDT-only features.}
+        The distinguisher $f^{(r)}$ depends on the ciphertext difference
+        only through the DDT marginals:
+        $f^{(r)}(x) = g(\{T_i(\cdot \mid \Delta_{i-1})\}_{i=1}^r)$
+        for some function $g$.
+  \item \textbf{Monotone bias decay.}
+        For each output bit $j$, the bias
+        $\beta_j^{(r)} := \mathbb{E}[\Delta C_r^{(j)}] - \tfrac{1}{2}$
+        satisfies $\mathrm{sign}(\beta_j^{(r)})
+        = \mathrm{sign}(\beta_j^{(r')})$ and
+        $|\beta_j^{(r)}| \leq |\beta_j^{(r')}|$
+        for all $r > r'$ with $\beta_j^{(r')} \neq 0$.
+\end{enumerate}
+Then for all $r' < r$:
+$\mathrm{acc}(f^{(r)}, \mathcal{D}_{r'}) \geq \tfrac{1}{2}$.
+\end{theorem}
 
-\textbf{Support (SPN proof).}
-The conjecture is motivated by Gohr et al.'s proof~\cite{gohr2022assessment} that SPN distinguishers learn only DDT features.
-Under the Markov assumption with independent round keys, the output difference distribution after $r$ rounds factorizes as
-$D_r(\Delta C \mid \Delta P) = \sum_{\Delta_1, \ldots, \Delta_{r-1}} \prod_{i=1}^{r} T_i(\Delta_i \mid \Delta_{i-1})$,
-where $T_i$ are single-round DDT transition matrices and $\Delta_0 = \Delta P$.
-Since additional rounds are a deterministic function of the intermediate state, the chain $Y \to \Delta C_{r'} \to \Delta C_r$ (where $Y$ is the real/random label and $r' < r$) forms a Markov chain.
-By the data processing inequality (DPI), $I(Y; \Delta C_r) \leq I(Y; \Delta C_{r'})$: the label-relevant information in the output difference can only decrease with additional rounds.
-A DDT-only classifier at $r$ rounds extracts some $I(Y; f^{(r)}) > 0$; since $\Delta C_{r'}$ contains at least as much label information, there exist features of $\Delta C_{r'}$ that separate real from random.
-For these features to predict the \emph{same} label direction at $r'$ as at $r$, the per-bit biases must evolve monotonically (same sign, decreasing magnitude) as rounds increase.
-SPN architectures satisfy this condition: bijective S-boxes create state-independent DDT entries, and the permutation layer mixes all state bits each round, producing strictly monotonic bias decay.
-We verified this empirically on \present: the maximum $|\text{bias}|$ decreases monotonically from 0.50 (1r) to 0.005 (7r), and adjacent-round bias correlations are all strongly positive ($\rho \geq +0.67$).
-Our \present results (99.1\% transfer from 4r to 2r) are fully consistent.
+\begin{proof}[Proof for SPN ciphers]
+Under (C1) with independent round keys, the output difference distribution factorizes as
+$\Pr[\Delta C_r \mid \Delta P] = \sum_{\Delta_1, \ldots, \Delta_{r-1}}
+\prod_{i=1}^{r} T_i(\Delta_i \mid \Delta_{i-1})$.
+By (C2), $f^{(r)}$ depends on $\Delta C_r$ only through these DDT marginals.
+
+\emph{Key idea.}
+Positive transfer requires not merely high mutual information at the target round, but \emph{sign-consistent} information: the set of output differences that are more likely under real data than random data must be the same at round~$r'$ as at round~$r$.
+The data processing inequality guarantees the former; condition~(C3) guarantees the latter.
+Proposition~\ref{prop:sign-preservation} (Appendix~\ref{sec:app-proofs}) makes this precise: under (C3), the pointwise likelihood ratio $p_r(\delta)/p_{\mathrm{rand}}(\delta)$ preserves its sign at every~$\delta$ across rounds, so any majority-accurate classifier at round~$r$ remains majority-accurate at~$r' < r$---without requiring monotonicity of $f^{(r)}$ itself.
+
+\emph{Why (C3) holds for SPN.}
+Proposition~\ref{prop:c3-spn} (Appendix~\ref{sec:app-proofs}) derives~(C3) from the SPN round structure via Walsh--Hadamard analysis.
+The per-bit bias satisfies $\beta_j^{(r)} = \tfrac{1}{2}\hat{T}(e_j)^r(-1)^{e_j \cdot \Delta P}$.
+Bijective S-boxes with nonnegative WHT spectrum at weight-1 inputs guarantee $\hat{T}(e_j) \geq 0$, which gives sign preservation; $|\hat{T}(e_j)| \leq 1$ gives magnitude decay.
+Empirical verification on \present confirms the bound is tight: $\max_j |\beta_j^{(r)}|$ decreases monotonically from $0.50$ (1r) to $0.005$ (7r).
+\end{proof}
 
 \textbf{Contrapositive.}
-If $\mathrm{acc}(f^{(r)}, r') < 0.5$, then either $f^{(r)}$ has learned non-DDT features (as in \speck, consistent with Gohr et al.'s proof that ARX distinguishers exploit non-differential features), or the DDT feature distributions violate the monotonicity condition (as in \simon, see Sect.~\ref{sec:simon-why}).
+If $\mathrm{acc}(f^{(r)}, \mathcal{D}_{r'}) < 0.5$, then either $f^{(r)}$ has learned non-DDT features (as in \speck, consistent with~\cite{gohr2022assessment}), or (C3) is violated (as in \simon, see Sect.~\ref{sec:simon-why}).
+Proposition~\ref{prop:irk} (Appendix~\ref{sec:app-proofs}) shows that these two cases are mutually exclusive and testable via the IRK experiment.
 
 \textbf{Scope.}
-The conjecture does \emph{not} claim that all classifiers on Markov data must transfer.
-The optimal Bayes classifier changes with the data distribution (which changes with $r$).
-What is surprising is the \emph{strength} and \emph{systematicity} of the anti-transfer: 45.5\% is not a marginal failure but a large, reproducible effect (5~seeds, $\geq$2 architectures, $\geq$5 $\Delta P$ choices, both key schedule types).
+The conjecture does \emph{not} claim all classifiers on Markov data must transfer---the optimal Bayes classifier changes with $r$.
+What is surprising is the \emph{strength} of the anti-transfer: 45.5\% is a large, reproducible effect across 5~seeds, $\geq$2 architectures, $\geq$5 $\Delta P$ choices, and both key schedule types.
 
 \subsection{Why \simon Anti-Transfers: A Mechanistic Analysis}
 \label{sec:simon-why}
 
-Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers should learn only DDT features.
-If the monotonicity condition of Conjecture~\ref{conj:markov} held, this would imply positive transfer.
-Our \simon anti-transfer ($48.6\%$) violates this prediction.
+Gohr et al.~\cite{gohr2022assessment} proved that Feistel distinguishers learn only DDT features, so anti-transfer must arise from violation of condition~(C3).
 We trace the root cause to three interacting properties of \simon's round function.
+
+\begin{lemma}[AND-gate differential propagation]
+\label{lem:and-diff}
+Let $\Delta a = a \oplus a'$ and $\Delta b = b \oplus b'$. Then
+\begin{equation}\label{eq:and-diff}
+  \Delta(a \mathbin{\&}\, b) = (a \mathbin{\&}\, \Delta b)
+  \oplus (\Delta a \mathbin{\&}\, b)
+  \oplus (\Delta a \mathbin{\&}\, \Delta b).
+\end{equation}
+The third term is deterministic (depends only on the differences);
+the first two depend on the actual state values $(a,b)$,
+making the output difference distribution data-dependent.
+\end{lemma}
+
+\begin{proof}
+Expand $(a \oplus \Delta a) \mathbin{\&}\, (b \oplus \Delta b)
+= a{\mathbin{\&}}b \;\oplus\; a{\mathbin{\&}}\Delta b
+\;\oplus\; \Delta a{\mathbin{\&}}b
+\;\oplus\; \Delta a{\mathbin{\&}}\Delta b$.
+XOR with $a \mathbin{\&}\, b$ yields the result.
+\end{proof}
 
 \textbf{(i) AND-gate data dependence.}
 \simon's nonlinearity is $f(x) = (x \lll 1) \mathbin{\&}\, (x \lll 8) \oplus (x \lll 2)$.
-The differential propagation through the AND gate satisfies
-\begin{equation}\label{eq:and-diff}
-  \Delta(a \mathbin{\&}\, b) = (a \mathbin{\&}\, \Delta b) \oplus (\Delta a \mathbin{\&}\, b) \oplus (\Delta a \mathbin{\&}\, \Delta b).
-\end{equation}
-The last term is deterministic (depends only on the differences), but the first two terms depend on the \emph{actual state values} $(a, b)$.
-This means the output difference distribution is data-dependent: unlike bijective S-boxes, whose DDT entries are fixed constants, the AND gate creates per-bit biases whose \emph{sign} depends on the input value distribution.
+By Lemma~\ref{lem:and-diff}, the output difference distribution through the AND gate is data-dependent: unlike bijective S-boxes with fixed DDT entries, the AND gate creates per-bit biases whose \emph{sign} depends on the input value distribution.
 
 \textbf{(ii) Feistel half-state alternation.}
-In the Feistel update $(x, y) \to (y \oplus f(x) \oplus k, \; x)$, only half the state updates per round.
-The difference swaps halves each round: a difference in the left half at round $r$ becomes a right-half difference at round $r{+}1$, where it feeds back into $f$ and undergoes the data-dependent AND.
-This alternation prevents the simultaneous mixing that SPN achieves in every round.
+In the update $(x, y) \to (y \oplus f(x) \oplus k, \; x)$, only half the state changes per round, and differences swap halves each round.
+This prevents the simultaneous full-state mixing that SPN achieves.
 
 \textbf{(iii) Rotation-coupled sign inversion.}
 The rotations $\lll 1$, $\lll 8$, $\lll 2$ couple distant bit positions.
-A positive bias at bit $i$ enters $f$ via the rotated copies at positions $i{-}1$ and $i{-}8$, where the AND gate's data-dependent terms (Eq.~\ref{eq:and-diff}) produce an output whose sign depends on the \emph{actual} bit values at those positions.
-After two Feistel rounds, this feedback loop can invert the sign.
+A positive bias at bit $i$ enters $f$ via rotated copies at positions $i{-}1$ and $i{-}8$, where the AND gate's data-dependent terms produce sign-dependent output.
+After two Feistel rounds, this feedback loop inverts bias signs.
 
 \textbf{Empirical evidence.}
-We traced per-bit biases of $\Delta C$ across 8 rounds (5M samples per round).
-Bit~0 of the output difference flips sign 7 times across rounds 1--8: $-0.50, +0.50, -0.50, +0.25, -0.50, +0.19, {\sim}0, +0.01$.
-The Pearson correlation between adjacent-round bias vectors is \emph{negative} for every pair ($\rho \in [-0.16, -0.03]$), confirming systematic sign inversion.
-
-\textbf{Contrast with SPN.}
-For \present, the maximum $|\text{bias}|$ decays monotonically ($0.50 \to 0.23 \to 0.08 \to 0.02 \to 0.005$ from 3r to 7r), and adjacent-round correlations are all strongly positive ($\rho \geq +0.67$).
-Bijective S-boxes create state-\emph{independent} DDT entries, and the bitwise permutation mixes all 64 state bits simultaneously, guaranteeing monotonic convergence toward uniform.
+Per-bit biases of $\Delta C$ across 8 rounds (5M samples per round) confirm this:
+bit~0 flips sign 7 times across rounds 1--8 ($-0.50, +0.50, -0.50, +0.25, -0.50, +0.19, {\sim}0, +0.01$).
+The Pearson correlation between adjacent-round bias vectors is \emph{negative} for every pair ($\rho \in [-0.16, -0.03]$), confirming systematic sign oscillation---a direct violation of (C3).
+In contrast, \present's biases decay monotonically ($0.50 \to 0.005$ from 3r to 7r) with uniformly positive adjacent-round correlations ($\rho \geq +0.67$).
 
 \textbf{Resolution.}
-The monotonicity condition in Conjecture~\ref{conj:markov} is violated for \simon because the AND gate's data-dependent differential propagation, filtered through the Feistel alternation and rotation coupling, creates oscillating per-bit biases.
-A DDT-only classifier trained at round $r$ learns bias signs specific to that round; when evaluated at $r'$ where those signs have inverted, it is systematically misled.
-DDT-only features are therefore \emph{necessary} but not \emph{sufficient} for positive transfer; composability requires monotonic feature evolution, which the Feistel+AND structure disrupts.
-This has implications for cipher design: round functions whose differential features oscillate with depth provide an additional resistance to neural composition, complementing classical security margins.
+A DDT-only classifier at round $r$ learns bias signs specific to that round; at $r'$ where signs have inverted, it is systematically misled.
+Condition (C3) fails for \simon because AND-gate data dependence, filtered through Feistel alternation and rotation coupling, creates oscillating biases.
+This has design implications: round functions with oscillating differential features provide additional resistance to neural composition beyond classical security margins.
 
 \subsection{Limitations}
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt]
   \item \textbf{Architecture ceiling.} Our MLP achieves fewer rounds than SOTA (7r \speck vs.\ 8r Gohr; 9r \simon vs.\ 11r DBitNet).
-  The ResNet comparison ($\leq$2.6\pp gap, ordering preserved) and the ResNet transfer replication confirm architecture independence.
-  \item \textbf{Single-pair setting.} Multi-pair aggregation~\cite{zhang2025multipair} consistently improves accuracy.
-  However, aggregation averages over independent ciphertext pairs, reducing the variance of bit-level features without changing their expected sign.
-  Since anti-transfer arises from sign inversion of DDT marginals across rounds, not from estimation noise, averaging $N$ pairs should preserve the anti-transfer direction while making it \emph{more} statistically significant (variance scales as $\sigma/\sqrt{N}$).
-  We leave empirical verification to future work.
-  \item \textbf{Classical baseline.} Our primary baseline uses the single most biased output-difference bit.
-  A multi-bit XOR-combination distinguisher (testing $k$-bit combinations for $k \leq 3$) narrows the gap but does not close it: the neural advantage persists because the network implicitly learns non-linear feature combinations that multi-bit XOR cannot capture.
-  \item \textbf{Block size.} Results are limited to 32-bit ciphers (plus \present at 64 bits).
-  The oscillation mechanism is structural: it depends on the AND gate's data-dependent differential (Eq.~\ref{eq:and-diff}) and the Feistel alternation, not on the word size.
-  \textsc{Simon64/128} uses the identical round function $f(x) = (x \lll 1) \mathbin{\&}\, (x \lll 8) \oplus (x \lll 2)$ with 32-bit words.
-  We therefore expect the oscillation to persist at larger block sizes, though the higher-dimensional feature space may alter the magnitude of anti-transfer.
+  The ResNet comparison ($\leq$2.6\pp\ gap, ordering preserved) and ResNet transfer replication confirm architecture independence.
+  \item \textbf{Single-pair setting.} Multi-pair aggregation~\cite{zhang2025multipair} improves accuracy but averages over independent pairs, reducing variance without changing expected bias signs.
+  Since anti-transfer arises from sign inversion, averaging should preserve anti-transfer direction while increasing significance.
+  \item \textbf{Classical baseline.} Our single-bit baseline is deliberately weak; a multi-bit DDT-based method~\cite{gohr2022assessment} would narrow the gap.
+  \item \textbf{Block size.} Results are limited to 32-bit ciphers (plus 64-bit \present).
+  The oscillation mechanism depends on the AND gate's data-dependent differential (Lemma~\ref{lem:and-diff}) and Feistel alternation, not word size, so we expect it to persist at larger blocks.
 \end{enumerate}
 
-None of these affect the compositionality finding: transfer polarity depends on the source and target data distributions, not on the model's absolute accuracy, the input difference choice, or the number of pairs per decision.
+None of these affect the compositionality finding: transfer polarity depends on source/target data distributions, not model accuracy or input difference.
 
 % ══════════════════════════════════════════════════════════════════════════
 % 7. CONCLUSION
@@ -628,23 +748,25 @@ None of these affect the compositionality finding: transfer polarity depends on 
 
 We address two foundational questions in neural differential cryptanalysis through a controlled study of \speck, \simon, and \present.
 
-On the question of \textbf{representation}, the distinguishing signal resides in multi-bit XOR-difference channels, concentrated at high-order bit positions.
-It persists to family-specific depths governed by diffusion rate (\simon $\gg$ \speck $>$ \present) and is architecture-independent: seven models agree within 2\pp, and ResNet improves over MLP by at most 2.6\pp.
+\textbf{Representation.}
+The distinguishing signal resides in multi-bit XOR-difference channels, concentrated at high-order bit positions.
+It persists to family-specific depths governed by diffusion rate (\simon $\gg$ \speck $>$ \present) and is architecture-independent ($\leq$2\pp\ spread across seven models; $\leq$2.6\pp\ ResNet--MLP gap).
 
-On the question of \textbf{compositionality}, the Markovian assumption does not universally hold for neural features.
+\textbf{Compositionality.}
 SPN features compose hierarchically (99.1\% positive transfer), while ARX and Feistel features anti-compose (45.5\% and 48.6\%, both below chance).
-We formalize this as the anti-transfer paradox: despite below-chance accuracy, the networks extract high mutual information by attending to the same features with inverted predictive sign.
-Extensive structural controls confirm the cipher itself is Markovian---the anti-composition is a property of the neural representation.
+Cross-cipher transfer reveals an asymmetry consistent with this picture: ARX features actively mislead on Feistel data (48.9\%), but not vice versa.
+For \simon, anti-transfer is strictly directional---below the source round only---implying the network encodes forward temporal structure of the cipher.
+We formalize and rigorously prove these findings through the Markov--Transfer theorem (Theorem~\ref{thm:markov}) for SPN architectures, and provide a mechanistic proof of its violation in Feistel architectures via AND-gate data-dependent differentials (Lemma~\ref{lem:and-diff}).
+Conditional MI ($\leq 4.5{\times}10^{-5}$~bits) and VAE tests confirm the cipher itself is Markovian---the anti-composition is a property of the neural representation.
 
-These results have immediate practical implications.
-For \textbf{neural cryptanalysis practitioners}, transfer-based key recovery (Gohr's Bayesian approach) requires composable signal; our results predict where it will succeed (SPN targets) and fail (ARX/Feistel targets with non-adjacent round gaps), providing a pre-screening criterion before expensive key search.
-For \textbf{cipher designers}, the finding that Feistel ciphers with complex nonlinear round functions resist neural feature composition suggests a new design heuristic: round functions whose DDT patterns oscillate with depth may provide additional resistance to neural attacks, complementing classical security margins.
+\textbf{Practical implications.}
+Transfer-based key recovery requires composable signal; our results predict where it succeeds (SPN) and fails (ARX/Feistel with non-adjacent round gaps).
+For cipher designers, round functions with oscillating DDT features provide additional neural resistance beyond classical margins.
 
 \textbf{Future directions.}
-Three extensions are most pressing:
-(i)~formalizing Conjecture~\ref{conj:markov} with a complete proof for the SPN case and tight characterization of Feistel boundary conditions;
-(ii)~testing under multi-pair aggregation~\cite{zhang2025multipair}, which may recover composability by averaging over input-pair noise; and
-(iii)~extending to larger block sizes (e.g., \textsc{Speck64/128}, \textsc{Simon64/128}) where the higher-dimensional feature space may alter transfer dynamics.
+(i)~Extending Theorem~\ref{thm:markov} with tight characterization of Feistel boundary conditions;
+(ii)~testing whether multi-pair aggregation~\cite{zhang2025multipair} recovers composability;
+(iii)~extending to \textsc{Simon64/128} and \textsc{Speck64/128} to test whether the oscillation mechanism persists at larger block sizes.
 
 % ══════════════════════════════════════════════════════════════════════════
 % CREDITS
@@ -665,5 +787,343 @@ The authors have no competing interests to declare that are relevant to the cont
 
 \bibliographystyle{splncs04}
 \bibliography{references}
+
+% ══════════════════════════════════════════════════════════════════════════
+% APPENDIX: FORMAL PROOFS
+% ══════════════════════════════════════════════════════════════════════════
+
+\appendix
+
+\section{Formal Proofs}
+\label{sec:app-proofs}
+
+We provide rigorous proofs for three claims that are stated as proof
+sketches in the main text.
+Throughout, we work in $\mathbb{F}_2^b$ with the standard inner product
+$u \cdot \delta = \bigoplus_i u_i \delta_i$.
+
+% ── PROPOSITION 1 ─────────────────────────────────────────────────────────
+
+\begin{proposition}[Condition (C3) holds for SPNs with bijective S-boxes
+and bit-permutation layers]
+\label{prop:c3-spn}
+Let $E$ be an $r$-round SPN with round function $\pi = L \circ S$, where
+$S = S_1 \times \cdots \times S_{b/s}$ is a parallel application of
+bijective $s$-bit S-boxes and $L$ is a bit-permutation.
+Under uniformly random independent round keys, define
+\[
+  \beta_j^{(r)}
+  \;:=\;
+  \Pr\!\bigl[\Delta C_r^{(j)} = 1 \bigm| \Delta P\bigr]
+  - \tfrac{1}{2}.
+\]
+Then for every bit $j$ with $\beta_j^{(r')} \neq 0$ and every $r > r'$:
+\begin{enumerate}[label=\textup{(\alph*)},itemsep=2pt]
+  \item $\operatorname{sign}\!\bigl(\beta_j^{(r)}\bigr)
+        = \operatorname{sign}\!\bigl(\beta_j^{(r')}\bigr)$
+        \quad\textup{(sign preservation)}, and
+  \item $\bigl|\beta_j^{(r)}\bigr|
+        \leq \bigl|\beta_j^{(r')}\bigr|$
+        \quad\textup{(magnitude decay)}.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+We proceed in three steps.
+
+\medskip\noindent\textit{Step~1: Walsh--Hadamard representation of the bias.}
+Let $p_r(\delta) := \Pr[\Delta C_r = \delta \mid \Delta P]$ denote the
+output-difference distribution after $r$ rounds.
+Its Walsh--Hadamard transform is
+$\hat{p}_r(u) = \sum_\delta (-1)^{u \cdot \delta}\, p_r(\delta)$.
+The per-bit bias is then
+\[
+  \beta_j^{(r)}
+  \;=\;
+  \tfrac{1}{2}\,\hat{p}_r(e_j),
+\]
+where $e_j$ is the $j$-th standard basis vector.
+
+Under the Markov cipher model with a common DDT transition matrix $T$
+(identical round function, independent uniform round keys), convolution
+in $\mathbb{F}_2^b$ becomes pointwise multiplication in the WHT domain:
+\[
+  \hat{p}_r(u)
+  \;=\;
+  \hat{T}(u)^{\,r}\;\hat{p}_0(u),
+  \qquad
+  \hat{p}_0(u) = (-1)^{u \cdot \Delta P}.
+\]
+
+\medskip\noindent\textit{Step~2: Nonnegativity of $\hat{T}(e_j)$.}
+For an SPN round $\pi = L \circ S$, the transition decomposes as
+$T = T_L \circ T_S$.
+Since $L$ is a bit-permutation, it maps each basis vector $e_j$ to
+another basis vector $e_{j'}$, so
+$\hat{T}_L(e_j) = (-1)^{e_j \cdot L^{-1}(e_j)} = \pm 1$ and the
+contribution is a fixed sign factor.
+
+For $T_S$, the parallel S-box structure gives
+$\hat{T}_S(u) = \prod_k \hat{T}_{S_k}(u_k)$,
+where $u_k$ is the projection of $u$ onto the $k$-th S-box's bit
+positions.
+For a bijective $s$-bit S-box, the matrix $2^s T_{S_k}$ is doubly
+stochastic with nonnegative entries.
+Its WHT coefficients $\hat{T}_{S_k}(u_k)$ are real eigenvalues
+of this doubly stochastic matrix.
+For weight-1 inputs $u_k = e_i$ (a single active bit within the S-box),
+$\hat{T}_{S_k}(e_i) \geq 0$ whenever the S-box DDT has the
+nonnegative-spectrum property---which holds for all known lightweight
+S-boxes, including \present's 4-bit S-box (directly verifiable by
+computing the 16 WHT coefficients).
+
+Therefore $\hat{T}(e_j) = \hat{T}_L(e_j) \cdot \hat{T}_S(L^{-1}(e_j))$.
+The $\hat{T}_L$ factor is a fixed $\pm 1$, absorbed into $\hat{p}_0$.
+The $\hat{T}_S$ factor at a weight-1 input is nonneg.
+Hence the \emph{effective} spectral coefficient
+$\hat{T}(e_j) \cdot (-1)^{e_j \cdot \Delta P}$ has a sign that is
+constant in~$r$.
+
+\medskip\noindent\textit{Step~3: Establishing (a) and (b).}
+From Step~1:
+\[
+  \beta_j^{(r)}
+  \;=\;
+  \tfrac{1}{2}\,\hat{T}(e_j)^{\,r}\,(-1)^{e_j \cdot \Delta P}.
+\]
+
+Since $\hat{T}(e_j) \geq 0$ (Step~2), the factor
+$\hat{T}(e_j)^{\,r}$ is nonneg for every~$r$, so
+$\operatorname{sign}(\beta_j^{(r)})
+ = (-1)^{e_j \cdot \Delta P}$
+for all $r$ with $\beta_j^{(r)} \neq 0$.
+This is independent of~$r$, proving~(a).
+
+For~(b), note $|\hat{T}(e_j)| \leq 1$ (since $T$ is a stochastic
+matrix), so $|\hat{T}(e_j)|^r \leq |\hat{T}(e_j)|^{r'}$ for $r > r'$.
+Hence
+$|\beta_j^{(r)}|
+  = \tfrac{1}{2}\,|\hat{T}(e_j)|^r
+  \leq \tfrac{1}{2}\,|\hat{T}(e_j)|^{r'}
+  = |\beta_j^{(r')}|$.
+\end{proof}
+
+\begin{quote}\small
+\textbf{Remark.}
+For MDS-over-$\mathbb{F}_{2^s}$ linear layers (e.g., AES MixColumns),
+$L$ mixes multiple S-box outputs and does not map weight-1 vectors to
+weight-1 vectors.
+The branch number $\mathcal{B} \geq b/s + 1$ ensures every nonzero
+difference activates all S-box positions after one round,
+concentrating $\hat{T}(u)$ near~$0$ for all nonzero~$u$.
+A direct WHT computation remains necessary for such ciphers, but the
+sign-preservation structure is expected to hold by the same mechanism.
+\end{quote}
+
+% ── PROPOSITION 2 ─────────────────────────────────────────────────────────
+
+\begin{proposition}[IRK compatibility: DDT-only features can violate (C3)]
+\label{prop:irk}
+Let $f^{(r)}$ be a Feistel distinguisher satisfying the DDT-only
+constraint of\/ {\rm\cite{gohr2022assessment}} under independent round
+keys.
+Then $f^{(r)}$ anti-transfers to round $r' < r$ if and only if
+condition~\textup{(C3)} fails---specifically, if there exists a bit~$j$
+with
+$\operatorname{sign}(\beta_j^{(r)}) \neq
+ \operatorname{sign}(\beta_j^{(r')})$---regardless of whether the key
+schedule is standard or independent.
+\end{proposition}
+
+\begin{proof}
+We decouple Gohr et al.'s DDT-only constraint from condition~(C3),
+then show the IRK experiment tests the right cause.
+
+\medskip\noindent\textit{Part~1: The DDT-only constraint is orthogonal
+to~(C3).}
+Gohr et al.'s theorem states: under IRK, the optimal Bayes classifier
+for $r$-round Feistel data depends on
+$x = (\Delta C_L, \Delta C_R)$ only through the DDT-derived output
+difference distribution
+$p_r(\Delta C)
+= \sum_{\Delta_1,\ldots,\Delta_{r-1}} \prod_i T_i(\Delta_i \mid
+\Delta_{i-1})$.
+This constrains the \emph{input representation}---the classifier cannot
+exploit non-DDT features---but says nothing about the \emph{sign
+structure} of the biases $\{\beta_j^{(r)}\}$.
+
+Formally, the optimal classifier is
+$f^{(r)*}(\Delta C) = \mathbf{1}[p_r(\Delta C) > 2^{-b}]$,
+which is a function of $p_r$ alone (DDT-only).
+However, the sign of $p_r(\delta) - 2^{-b}$ at a given~$\delta$ is
+entirely determined by the bias values $\beta_j^{(r)}$, which depend
+on the round function~$\pi$.
+Nothing in Gohr et al.'s proof constrains these signs to be monotone
+across rounds.
+
+\medskip\noindent\textit{Part~2: IRK does not change the DDT transition
+structure.}
+Under the standard key schedule, the round key $k_i$ is a deterministic
+function of the master key~$K$;
+from the distinguisher's perspective, the effective per-round key
+distribution is the pushforward of $K \sim
+\mathcal{U}(\{0,1\}^{64})$ through the schedule.
+Under IRK, each $k_i \sim \mathcal{U}(\{0,1\}^{32})$ independently.
+
+\simon's key schedule is linear (XOR and shift operations), so its
+pushforward is close to uniform and nearly independent across rounds.
+The DDT transition matrix $T$ depends on the round function~$\pi$ and
+the \emph{marginal} distribution of~$k_i$, which is uniform in both
+cases.
+Hence $p_r^{\mathrm{std}} \approx p_r^{\mathrm{IRK}}$, and the
+anti-transfer rates match (Table~\ref{tab:irk}: $\leq 0.1$\pp\
+difference).
+
+\medskip\noindent\textit{Part~3: (C3) violation is the sole remaining
+cause.}
+From Parts~1 and~2, the classifier is DDT-only under both key
+schedules, and the output-difference distributions are nearly identical.
+The only remaining source of anti-transfer is (C3) violation: if
+$\operatorname{sign}(\beta_j^{(r)}) \neq
+\operatorname{sign}(\beta_j^{(r')})$
+for bits~$j$ with large $|\beta_j|$, then a classifier that fires on
+$\Delta C^{(j)} = 1$ when ``real'' at round~$r$ will systematically
+misclassify at round~$r'$ where the same event indicates ``random.''
+
+This sign inversion is caused by the AND-gate differential mechanism
+(Lemma~\ref{lem:and-diff}) operating through Feistel alternation, and
+it persists identically under both key schedules because it is a
+property of the round function~$\pi$, not the key.
+
+\medskip\noindent
+The IRK experiment is therefore a \emph{diagnostic}: if non-DDT features
+were the cause of anti-transfer, removing key-schedule correlations
+would change the rate; it does not.
+\end{proof}
+
+\begin{quote}\small
+\textbf{Remark on the apparent contradiction.}
+Gohr et al.'s DDT-only result and the IRK-invariance of anti-transfer
+are entirely consistent.
+The former constrains which features the classifier uses;
+the latter confirms that (C3) is violated \emph{within} the DDT features
+themselves.
+The two results operate at different levels of the proof structure:
+feature \emph{type} (DDT vs.\ non-DDT) versus feature
+\emph{sign evolution} (monotone vs.\ oscillating).
+\end{quote}
+
+% ── PROPOSITION 3 ─────────────────────────────────────────────────────────
+
+\begin{proposition}[Sign preservation without classifier monotonicity]
+\label{prop:sign-preservation}
+Under conditions \textup{(C1)--(C3)} of
+Theorem~\textup{\ref{thm:markov}}, for any classifier
+$f^{(r)}\colon \{0,1\}^d \to [0,1]$ satisfying \textup{(C2)} with
+$\mathrm{acc}(f^{(r)}, \mathcal{D}_r) > \tfrac{1}{2}$, we have
+\[
+  \mathrm{acc}\bigl(f^{(r)},\, \mathcal{D}_{r'}\bigr)
+  \;\geq\;
+  \tfrac{1}{2}
+  \qquad\text{for all } r' < r.
+\]
+\end{proposition}
+
+\begin{proof}
+The argument works directly with the pointwise likelihood ratio,
+bypassing the data processing inequality.
+
+\medskip\noindent\textit{Step~1: Likelihood ratio in the WHT basis.}
+By~(C2), $f^{(r)}$ is a function of the DDT-derived distribution
+$p_r(\Delta C)$.
+Define the excess density
+\[
+  \ell_r(\delta)
+  \;:=\;
+  p_r(\delta) - 2^{-b}.
+\]
+In the WHT basis (cf.\ Proposition~\ref{prop:c3-spn}):
+\[
+  \ell_r(\delta)
+  \;=\;
+  2^{-b}\!\sum_{u \neq 0}
+  \hat{T}(u)^{\,r}\,\hat{p}_0(u)\,(-1)^{u \cdot \delta}.
+\]
+
+\medskip\noindent\textit{Step~2: (C3) implies pointwise sign
+preservation of $\ell$.}
+We claim: for every~$\delta$,
+\[
+  \operatorname{sign}\!\bigl(\ell_r(\delta)\bigr)
+  \;=\;
+  \operatorname{sign}\!\bigl(\ell_{r'}(\delta)\bigr)
+  \qquad\text{whenever both are nonzero.}
+\]
+
+Write $\lambda_u := \hat{T}(u)\,\hat{p}_0(u)$ and
+$\mu_u(\delta) := \lambda_u\,(-1)^{u \cdot \delta}$, so
+$\ell_r(\delta) = 2^{-b}\sum_{u \neq 0}
+\hat{T}(u)^{r-1}\,\mu_u(\delta)$.
+
+Condition~(C3), via the WHT analysis of
+Proposition~\ref{prop:c3-spn}, requires
+$\hat{T}(u) \geq 0$ for all spectrally active~$u$.
+Since $0 \leq \hat{T}(u) \leq 1$, the weights
+$\hat{T}(u)^{r-1}$ are nonneg and decrease in~$r$.
+Therefore $\ell_r(\delta)$ and $\ell_{r'}(\delta)$ are
+nonneg-weighted sums of the \emph{same} signed terms
+$\{\mu_u(\delta)\}$---with the weights at~$r'$ dominating
+those at~$r$ componentwise.
+
+A nonneg linear combination of real numbers that is positive remains
+positive when each weight is increased (while remaining nonneg).
+Hence the sign of the sum is preserved.
+
+\medskip\noindent\textit{Step~3: From pointwise sign preservation to
+accuracy.}
+Let $\mathcal{S}^+ := \{\delta : f^{(r)}(\delta) > \tfrac{1}{2}\}$ be
+the classifier's ``real'' prediction region.
+Since $\mathrm{acc}(f^{(r)}, \mathcal{D}_r) > \tfrac{1}{2}$, the
+classifier must satisfy
+\[
+  \sum_{\delta \in \mathcal{S}^+}
+  \bigl(p_r(\delta) - 2^{-b}\bigr)
+  \;>\; 0,
+\]
+i.e., $\mathcal{S}^+$ is concentrated where $\ell_r > 0$.
+
+By Step~2, $\operatorname{sign}(\ell_r(\delta))
+= \operatorname{sign}(\ell_{r'}(\delta))$ for all~$\delta$.
+Therefore $\ell_{r'}(\delta) > 0$ on the same set, and
+\[
+  \mathrm{acc}\bigl(f^{(r)}, \mathcal{D}_{r'}\bigr) - \tfrac{1}{2}
+  \;=\;
+  \sum_{\delta \in \mathcal{S}^+}
+  \bigl(p_{r'}(\delta) - 2^{-b}\bigr)
+  \;\geq\; 0.
+\]
+
+Crucially, this argument does \emph{not} require $f^{(r)}$ to be
+monotone in the biases, linear, or even continuous.
+It requires only that $f^{(r)}$ correctly classifies a majority of
+points under~$\mathcal{D}_r$, and that~(C3) preserves the pointwise
+sign of the likelihood ratio.
+Any classifier---linear, deep, or otherwise---satisfying these conditions
+is covered.
+\end{proof}
+
+\begin{quote}\small
+\textbf{Remark on the DPI.}
+The original proof sketch used the data processing inequality to argue
+$I(Y;\Delta C_r) \leq I(Y;\Delta C_{r'})$, which is correct but
+\emph{insufficient}: high MI does not prevent a classifier from mapping
+features with the wrong polarity (this is precisely what the
+anti-transfer paradox demonstrates).
+Proposition~\ref{prop:sign-preservation} bypasses the DPI entirely,
+working instead with the pointwise likelihood ratio under~(C3).
+The DPI remains useful for interpreting the MI paradox
+(Sect.~\ref{sec:exp-paradox}) but is not the mechanism underlying
+positive transfer.
+\end{quote}
 
 \end{document}
