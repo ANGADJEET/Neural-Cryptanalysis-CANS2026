@@ -1,0 +1,106 @@
+{
+  "points": [
+    {
+      "cipher": "present",
+      "source_round": 4,
+      "target_round": 2,
+      "cosine_similarity": 0.8652472362987829,
+      "empirical_accuracy": 0.9905519999999999
+    },
+    {
+      "cipher": "present",
+      "source_round": 4,
+      "target_round": 3,
+      "cosine_similarity": 0.9024384638079478,
+      "empirical_accuracy": 0.9685840000000001
+    },
+    {
+      "cipher": "present",
+      "source_round": 4,
+      "target_round": 5,
+      "cosine_similarity": 0.934684112136958,
+      "empirical_accuracy": 0.591428
+    },
+    {
+      "cipher": "present",
+      "source_round": 4,
+      "target_round": 6,
+      "cosine_similarity": 0.8874258942070586,
+      "empirical_accuracy": 0.5156200000000001
+    },
+    {
+      "cipher": "simon32",
+      "source_round": 6,
+      "target_round": 4,
+      "cosine_similarity": 0.44248466254897667,
+      "empirical_accuracy": 0.4861
+    },
+    {
+      "cipher": "simon32",
+      "source_round": 6,
+      "target_round": 5,
+      "cosine_similarity": 0.1161774298701043,
+      "empirical_accuracy": 0.488268
+    },
+    {
+      "cipher": "simon32",
+      "source_round": 6,
+      "target_round": 7,
+      "cosine_similarity": -0.0229081599873931,
+      "empirical_accuracy": 0.50266
+    },
+    {
+      "cipher": "simon32",
+      "source_round": 6,
+      "target_round": 8,
+      "cosine_similarity": 0.5217270734031614,
+      "empirical_accuracy": 0.509568
+    },
+    {
+      "cipher": "simon32",
+      "source_round": 6,
+      "target_round": 9,
+      "cosine_similarity": 0.028342217256271382,
+      "empirical_accuracy": 0.5009
+    },
+    {
+      "cipher": "speck32",
+      "source_round": 5,
+      "target_round": 3,
+      "cosine_similarity": 0.1636382384253595,
+      "empirical_accuracy": 0.454732
+    },
+    {
+      "cipher": "speck32",
+      "source_round": 5,
+      "target_round": 4,
+      "cosine_similarity": 0.5177388467481574,
+      "empirical_accuracy": 0.45496800000000004
+    },
+    {
+      "cipher": "speck32",
+      "source_round": 5,
+      "target_round": 6,
+      "cosine_similarity": -0.3995078107293938,
+      "empirical_accuracy": 0.5059720000000001
+    },
+    {
+      "cipher": "speck32",
+      "source_round": 5,
+      "target_round": 7,
+      "cosine_similarity": -0.5955139412065531,
+      "empirical_accuracy": 0.49512
+    },
+    {
+      "cipher": "speck32",
+      "source_round": 5,
+      "target_round": 8,
+      "cosine_similarity": 0.3982494901771872,
+      "empirical_accuracy": 0.500128
+    }
+  ],
+  "pearson_r": 0.5254314665716345,
+  "pearson_p": 0.05366309409644207,
+  "spearman_rho": 0.5296703296703297,
+  "spearman_p": 0.05141659813787076
+}
