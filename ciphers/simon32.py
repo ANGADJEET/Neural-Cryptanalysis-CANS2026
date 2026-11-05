@@ -11,10 +11,10 @@ class Simon32(BaseCipher):
     WORD_SIZE = 16
     ROUNDS = 32
     
-    Z_SEQ = [1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 
-             0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1,
-             1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1,
-             0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0]
+    # Sequence z0 from Beaulieu et al., period 62.
+    Z_SEQ = [int(b) for b in
+             "11111010001001010110000111001101111101000100101011000011100110"]
+    assert len(Z_SEQ) == 62
     
     def __init__(self):
         super().__init__(
@@ -44,7 +44,8 @@ class Simon32(BaseCipher):
             tmp = tmp ^ self._ror_scalar(tmp, 1)
             
             z_bit = self.Z_SEQ[(i - m) % 62]
-            k_new = (~k[i-m] & self.word_mask) ^ tmp ^ z_bit ^ c
+            # c already carries the complement (c ^ k == ~k ^ 3), so no ~ here.
+            k_new = k[i-m] ^ tmp ^ z_bit ^ c
             k.append(k_new & self.word_mask)
         
         return np.array(k[:n_rounds], dtype=np.uint16)

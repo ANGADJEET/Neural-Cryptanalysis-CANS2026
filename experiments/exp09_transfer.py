@@ -64,6 +64,7 @@ def single_run(seed, args):
         print(f"    → {args.cipher} {tr}r: {tmetrics['accuracy']:.4f}")
 
     cross_cipher = {}
+    cross_cipher_errors = {}
     target_ciphers = [c for c in ['speck32', 'simon32'] if c != args.cipher]
     for tc in target_ciphers:
         try:
@@ -81,12 +82,16 @@ def single_run(seed, args):
             cross_cipher[tc] = float(tcm['accuracy'])
             print(f"    → {tc} {args.source_rounds}r: {tcm['accuracy']:.4f}")
         except Exception as e:
+            # Recorded rather than swallowed, so a failed evaluation shows up
+            # in the results file instead of quietly reducing the sample count.
+            cross_cipher_errors[tc] = f"{type(e).__name__}: {e}"
             print(f"    → {tc}: ERROR - {e}")
 
     return {
         'source_accuracy': float(source_metrics['accuracy']),
         'cross_round': cross_round,
         'cross_cipher': cross_cipher,
+        'cross_cipher_errors': cross_cipher_errors,
     }
 
 
@@ -120,8 +125,19 @@ def main():
     cr_agg = {}
     for tr in target_rounds:
         key = str(tr)
-        vals = [r['cross_round'].get(key, 0.5) for r in all_runs]
-        cr_agg[key] = {'mean': float(np.mean(vals)), 'std': float(np.std(vals))}
+        # Aggregate only over runs that actually produced this target round.
+        # Imputing a missing run as 0.5 would silently pull the mean toward
+        # chance and shrink the reported std.
+        vals = [r['cross_round'][key] for r in all_runs if key in r['cross_round']]
+        if not vals:
+            raise RuntimeError(
+                f"no run produced a cross-round result for target {key}; "
+                f"{len(all_runs)} run(s) attempted"
+            )
+        if len(vals) < len(all_runs):
+            print(f"  WARNING: target {key} aggregated over {len(vals)}/{len(all_runs)} runs")
+        cr_agg[key] = {'mean': float(np.mean(vals)), 'std': float(np.std(vals)),
+                       'n_runs': len(vals), 'n_attempted': len(all_runs)}
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
@@ -141,10 +157,17 @@ def main():
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
-    cc_names = list(set(k for r in all_runs for k in r['cross_cipher']))
+    cc_names = sorted(set(k for r in all_runs for k in r['cross_cipher']))
+    # Same rule as above: a target cipher whose evaluation raised is left out
+    # of its own bar rather than counted as chance.
+    cc_vals = {c: [r['cross_cipher'][c] for r in all_runs if c in r['cross_cipher']]
+               for c in cc_names}
+    for c, vals in cc_vals.items():
+        if len(vals) < len(all_runs):
+            print(f"  WARNING: cross-cipher {c} aggregated over {len(vals)}/{len(all_runs)} runs")
     if cc_names:
-        cc_means = [float(np.mean([r['cross_cipher'].get(c, 0.5) for r in all_runs])) for c in cc_names]
-        cc_stds = [float(np.std([r['cross_cipher'].get(c, 0.5) for r in all_runs])) for c in cc_names]
+        cc_means = [float(np.mean(cc_vals[c])) for c in cc_names]
+        cc_stds = [float(np.std(cc_vals[c])) for c in cc_names]
         axes[1].bar(cc_names, cc_means, yerr=cc_stds, capsize=5,
                     color='coral', edgecolor='black', alpha=0.85)
         axes[1].axhline(y=src_mean, color='g', linestyle='--')
@@ -158,7 +181,17 @@ def main():
     plt.savefig(output_dir / f'e09_{args.cipher}.png', dpi=300)
     plt.close()
 
-    save_results({'cross_round': cr_agg, 'source_accuracy': src_mean, '_seeds': seeds},
+    cc_agg = {c: {'mean': float(np.mean(cc_vals[c])), 'std': float(np.std(cc_vals[c])),
+                  'n_runs': len(cc_vals[c]), 'n_attempted': len(all_runs)}
+              for c in cc_names}
+    err_names = sorted(set(k for r in all_runs for k in r.get('cross_cipher_errors', {})))
+    cc_errors = {c: [r['cross_cipher_errors'][c] for r in all_runs
+                     if c in r.get('cross_cipher_errors', {})]
+                 for c in err_names}
+
+    save_results({'cross_round': cr_agg, 'cross_cipher': cc_agg,
+                  'cross_cipher_errors': {c: e for c, e in cc_errors.items() if e},
+                  'source_accuracy': src_mean, '_seeds': seeds},
                  str(output_dir), f'e09_{args.cipher}_results.json')
     print(f"\n✓ Done")
 
