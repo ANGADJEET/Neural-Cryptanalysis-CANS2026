@@ -40,3 +40,14 @@ report/
 
 # Ensure we keep specific items in report directories
 # (The global rules above will already ignore the aux files, keeping .tex, .pdf, and figures)
+
+# Generated datasets (regenerate with scripts/generate_data.py)
+data/generated/
+
+# Local tooling and camera-ready / publisher files (not part of the code release)
+.tokensave/
+paper_cans/
+*.zip
+*.docx
+CANS_2026_paper_*.pdf
+image.png

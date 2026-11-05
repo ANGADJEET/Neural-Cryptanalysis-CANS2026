@@ -80,15 +80,15 @@ The core findings of the paper can be reproduced using the specific experiment s
 |------------|----------|-----------------------------|
 | **E01** | `exp01_baseline.py` | Generates the baseline accuracy vs. rounds degradation curves for all ciphers. |
 | **E02** | `exp02_representation.py` | Analyzes how input representations (R1-R9) impact distinguisher performance. |
-| **E03** | `exp03_invariance.py` | Tests rotational and shift invariance of learned features. |
+| **E03** | `exp03_model_invariance.py` | Tests rotational and shift invariance of learned features. |
 | **E04** | `exp04_robustness.py` | Evaluates model robustness against input noise and partial masking. |
-| **E05** | `exp05_memory.py` | Tests Markov assumption (C1) via VAE to see if models require multi-round history. |
+| **E05** | `exp05_markov_depth.py` | Tests Markov assumption (C1) via VAE to see if models require multi-round history. |
 | **E06** | `exp06_conditional_mi.py` | Uses **MINE** to estimate Mutual Information, revealing the anti-transfer paradox. |
 | **E07** | `exp07_signal_decay.py` | Generates 2D heatmaps of accuracy over rounds vs. $\Delta P$. |
 | **E08** | `exp08_saliency.py` | Computes Input Gradients / Saliency maps to map active differential bits. |
 | **E09** | `exp09_transfer.py` | **Core result:** Cross-round transfer tests (demonstrating SPECK/SIMON anti-transfer). |
 | **E10** | `exp10_diff_search.py` | Heuristic search for optimal input differences. |
-| **E11** | `exp11_classical_comp.py` | Compares neural confidence scores directly against classical differential transition probabilities. |
+| **E11** | `exp11_classical.py` | Compares neural confidence scores directly against classical differential transition probabilities. |
 | **E12** | `exp12_key_recovery.py` | Demonstrates Bayesian key recovery success on SPECK and failure on SIMON due to anti-transfer. |
 
 ### Running an Experiment
