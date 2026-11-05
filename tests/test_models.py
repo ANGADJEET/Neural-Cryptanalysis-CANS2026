@@ -108,20 +108,23 @@ class TestRNNModels:
 
 class TestSiameseModel:
     
+    # input_dim is the full feature width, as returned by get_input_dim, and
+    # the network splits it into two branches of input_dim // 2.
+
     def test_siamese_forward_2d(self):
-        model = get_model('siamese', input_dim=32)
+        model = get_model('siamese', input_dim=64)
         x = torch.randn(8, 64)
         out = model(x)
         assert out.shape == (8, 1)
-    
+
     def test_siamese_forward_3d(self):
-        model = get_model('siamese', input_dim=32)
+        model = get_model('siamese', input_dim=64)
         x = torch.randn(8, 2, 32)
         out = model(x)
         assert out.shape == (8, 1)
-    
+
     def test_siamese_output_range(self):
-        model = get_model('siamese', input_dim=32)
+        model = get_model('siamese', input_dim=64)
         x = torch.randn(8, 64)
         out = model(x)
         assert torch.all(out >= 0) and torch.all(out <= 1)
